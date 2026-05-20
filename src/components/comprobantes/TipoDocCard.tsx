@@ -25,6 +25,7 @@ interface TipoDocCardProps {
   onActualizarArchivos: (nuevosArchivos: ArchivoSubido[]) => void;
   onVer: (archivo: ArchivoSubido) => void;
   nombreProveedor: string;
+  alertaConsecutivo?: { faltantes: number[]; repetidos: number[]; presentes: number[] };
 }
 
 interface GrupoPareja {
@@ -41,6 +42,7 @@ export function TipoDocCard({
   onActualizarArchivos,
   onVer,
   nombreProveedor,
+  alertaConsecutivo,
 }: TipoDocCardProps) {
   const [abierto, setAbierto] = useState(false);
   const [gruposVacios, setGruposVacios] = useState<{ id: string; nombre: string }[]>([]);
@@ -333,6 +335,7 @@ export function TipoDocCard({
       {/* ── PANEL EXPANDIDO ──────────────────────────────────────────────────────── */}
       {abierto && (
         <div style={{ padding: "16px", borderTop: "1.5px solid #f1f5f9", background: "#fff" }}>
+          
           {esPorParejas ? (
             // ── RENDERING POR PAREJAS (GRUPOS) ──────────────────────────────────────
             <div>
@@ -343,6 +346,45 @@ export function TipoDocCard({
                   const gFaltaPareja = count === 1;
                   const gEsImparExtra = count >= 3 && count % 2 !== 0;
                   const uploadExtra = extraUploadActivo[grupo.id] ?? false;
+
+                  // Extraer el número consecutivo de esta pareja
+                  let numGrupo: number | null = null;
+                  const posiblesTextos = [grupo.nombre, ...grupo.archivos.map(a => a.nombre)];
+                  for (const rawTexto of posiblesTextos) {
+                    const texto = rawTexto.replace(new RegExp(tipo.id, 'gi'), '');
+                    if (texto.startsWith("Pareja ")) continue;
+                    const match = texto.match(/\d+/);
+                    if (match) {
+                      numGrupo = parseInt(match[0], 10);
+                      break;
+                    }
+                  }
+                  if (numGrupo === null) {
+                    for (const rawTexto of posiblesTextos) {
+                      const texto = rawTexto.replace(new RegExp(tipo.id, 'gi'), '');
+                      const match = texto.match(/\d+/);
+                      if (match) {
+                        numGrupo = parseInt(match[0], 10);
+                        break;
+                      }
+                    }
+                  }
+
+                  const esRepetido = numGrupo !== null && alertaConsecutivo?.repetidos.includes(numGrupo);
+
+                  // Verificar si faltan números antes de este grupo
+                  let faltanAntes: number[] = [];
+                  if (numGrupo !== null && alertaConsecutivo) {
+                    const idx = alertaConsecutivo.presentes.indexOf(numGrupo);
+                    if (idx > 0) {
+                      const prevNum = alertaConsecutivo.presentes[idx - 1];
+                      if (numGrupo > prevNum + 1) {
+                        for (let i = prevNum + 1; i < numGrupo; i++) {
+                          faltanAntes.push(i);
+                        }
+                      }
+                    }
+                  }
 
                   return (
                     <div
@@ -482,6 +524,52 @@ export function TipoDocCard({
                           </button>
                         </div>
                       </div>
+
+                      {/* Advertencia de salto de consecutivo */}
+                      {faltanAntes.length > 0 && (
+                        <div
+                          style={{
+                            background: "#fee2e2",
+                            border: "1px solid #fecaca",
+                            borderRadius: 8,
+                            padding: "8px 12px",
+                            marginBottom: 10,
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 6,
+                            fontSize: 10,
+                            color: "#b91c1c",
+                          }}
+                        >
+                          <AlertCircle size={13} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
+                          <div>
+                            <strong>Salto de secuencia:</strong> Faltan los consecutivos <strong>{faltanAntes.join(", ")}</strong> antes de este archivo.
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Advertencia interna del grupo de Consecutivo Repetido */}
+                      {esRepetido && (
+                        <div
+                          style={{
+                            background: "#fee2e2",
+                            border: "1px solid #fecaca",
+                            borderRadius: 8,
+                            padding: "8px 12px",
+                            marginBottom: 10,
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 6,
+                            fontSize: 10,
+                            color: "#b91c1c",
+                          }}
+                        >
+                          <AlertCircle size={13} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
+                          <div>
+                            <strong>Consecutivo repetido:</strong> El número <strong>{numGrupo}</strong> ya está siendo usado por otra pareja u otro lote en este mes.
+                          </div>
+                        </div>
+                      )}
 
                       {/* Advertencia interna del grupo */}
                       {gFaltaPareja && (

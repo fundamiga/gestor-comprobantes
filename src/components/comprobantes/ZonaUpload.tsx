@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, FileText, Image as ImageIcon, Eye, Trash2, Download } from "lucide-react";
+import { Upload, FileText, Image as ImageIcon, Eye, Trash2, Download, FileSpreadsheet } from "lucide-react";
 import type { ArchivoSubido, TipoDocumento } from "@/types";
 import { uid, formatKb, obtenerUrlDescargaCloudinary } from "@/lib/utils";
 import { subirACloudinary } from "@/lib/cloudinary";
@@ -37,7 +37,12 @@ export function ZonaUpload({
     if (!files || files.length === 0) return;
     setCargando(true);
     const permitidos = Array.from(files).filter(
-      (f) => f.type.startsWith("image/") || f.type === "application/pdf"
+      (f) => f.type.startsWith("image/") || 
+             f.type === "application/pdf" || 
+             f.type === "application/vnd.ms-excel" || 
+             f.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+             f.name.endsWith(".xls") || 
+             f.name.endsWith(".xlsx")
     );
     for (const f of permitidos) {
       const toastId = toast.loading(`Subiendo "${f.name}"...`);
@@ -92,6 +97,11 @@ export function ZonaUpload({
                 <FileText
                   size={14}
                   style={{ color: "#ef4444", flexShrink: 0 }}
+                />
+              ) : arch.nombre.endsWith(".xls") || arch.nombre.endsWith(".xlsx") || arch.tipo.includes("excel") || arch.tipo.includes("spreadsheetml") ? (
+                <FileSpreadsheet
+                  size={14}
+                  style={{ color: "#10b981", flexShrink: 0 }}
                 />
               ) : (
                 <ImageIcon
@@ -203,16 +213,16 @@ export function ZonaUpload({
               margin: 0,
             }}
           >
-            {cargando ? "Cargando..." : "Subir foto o PDF"}
+            {cargando ? "Cargando..." : "Subir foto, PDF o Excel"}
           </p>
           <p style={{ fontSize: 10, color: "#94a3b8", margin: "2px 0 0" }}>
-            Arrastra o haz clic · JPG, PNG, PDF
+            Arrastra o haz clic · JPG, PNG, PDF, Excel
           </p>
           <input
             ref={inputRef}
             type="file"
             multiple
-            accept="image/*,application/pdf"
+            accept="image/*,application/pdf,.xls,.xlsx"
             style={{ display: "none" }}
             onChange={(e) => procesarArchivos(e.target.files)}
           />

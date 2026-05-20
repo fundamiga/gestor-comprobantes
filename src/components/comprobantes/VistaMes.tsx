@@ -10,11 +10,13 @@ import {
   FolderArchive,
   FolderOpen,
   Folder,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import type { Lote, Periodo, ArchivoSubido } from "@/types";
 import { MESES } from "@/lib/constantes";
 import { motion } from "framer-motion";
-import { calcularEstadoLote, colorEstado } from "@/lib/utils";
+import { calcularEstadoLote, colorEstado, analizarConsecutivos } from "@/lib/utils";
 import { EstadoBadge } from "./UIComunes";
 import { ModalCrearLote } from "./ModalCrearLote";
 import { VistaLote } from "./VistaLote";
@@ -83,6 +85,9 @@ export function VistaMes({
   const vacios = periodo.lotes.filter(
     (l) => calcularEstadoLote(l) === "vacio"
   ).length;
+
+  const alertasConsecutivos = analizarConsecutivos(periodo);
+  const hayDatosConsecutivos = Object.keys(alertasConsecutivos).length > 0;
 
   return (
     <motion.div
@@ -272,6 +277,65 @@ export function VistaMes({
                 </p>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Alertas de consecutivos */}
+        {hayDatosConsecutivos && (
+          <div style={{ marginBottom: 20 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 800, color: "#0f172a", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+              <AlertCircle size={15} style={{ color: "#d97706" }} /> Control de Consecutivos del Mes
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {Object.entries(alertasConsecutivos).map(([tipoId, alerta]) => {
+                const tipoDef = TIPOS_DOCUMENTO.find((t) => t.id === tipoId);
+                const tieneProblemas = alerta.faltantes.length > 0 || alerta.repetidos.length > 0;
+                
+                return (
+                  <div
+                    key={tipoId}
+                    style={{
+                      background: tieneProblemas ? "#fffbeb" : "#f0fdf4",
+                      border: `1px solid ${tieneProblemas ? "#fde68a" : "#bbf7d0"}`,
+                      borderRadius: 12,
+                      padding: "12px 16px",
+                      display: "flex",
+                      gap: 12,
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <div>
+                      <strong style={{ fontSize: 12, color: tieneProblemas ? "#92400e" : "#166534", display: "block", marginBottom: 4 }}>
+                        {tipoDef?.label} ({tipoDef?.nombre})
+                      </strong>
+                      
+                      {!tieneProblemas ? (
+                        <p style={{ margin: 0, fontSize: 11, color: "#15803d", display: "flex", alignItems: "center", gap: 4 }}>
+                          <CheckCircle2 size={13} />
+                          Secuencia correcta (del {Math.min(...alerta.presentes)} al {Math.max(...alerta.presentes)})
+                        </p>
+                      ) : (
+                        <>
+                          <p style={{ margin: 0, fontSize: 11, color: "#b45309", marginBottom: 2 }}>
+                            <strong style={{ color: "#92400e" }}>Rango detectado:</strong> del {Math.min(...alerta.presentes)} al {Math.max(...alerta.presentes)}
+                          </p>
+                          {alerta.faltantes.length > 0 && (
+                            <p style={{ margin: 0, fontSize: 11, color: "#b45309" }}>
+                              <strong style={{ color: "#92400e" }}>Faltan:</strong> {alerta.faltantes.join(", ")}
+                            </p>
+                          )}
+                          {alerta.repetidos.length > 0 && (
+                            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#b45309" }}>
+                              <strong style={{ color: "#92400e" }}>Repetidos:</strong> {alerta.repetidos.join(", ")}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Building2, AlertCircle, CheckCircle, Info, FileDown } from "lucide-react";
+import { ArrowLeft, Building2, AlertCircle, CheckCircle, CheckCircle2, Info, FileDown } from "lucide-react";
 import type { Lote, Periodo, ArchivoSubido } from "@/types";
 import { TIPOS_DOCUMENTO, MESES } from "@/lib/constantes";
-import { calcularEstadoLote } from "@/lib/utils";
+import { calcularEstadoLote, analizarConsecutivos } from "@/lib/utils";
 import { EstadoBadge, VisorArchivo } from "./UIComunes";
 import { TipoDocCard } from "./TipoDocCard";
 import { motion } from "framer-motion";
@@ -34,6 +34,9 @@ export function VistaLote({
   );
 
   const mesLabel = `${MESES[periodo.mes]} ${periodo.anio}`;
+
+  const alertasConsecutivos = analizarConsecutivos(periodo);
+  const hayDatosConsecutivos = Object.keys(alertasConsecutivos).length > 0;
 
   const handleDescargarLote = async () => {
     const todosArchivos = TIPOS_DOCUMENTO.flatMap(
@@ -298,6 +301,7 @@ export function VistaLote({
               onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
               onVer={setVisorArchivo}
               nombreProveedor={lote.proveedor}
+              alertaConsecutivo={alertasConsecutivos[tipo.id]}
             />
           ))}
         </div>

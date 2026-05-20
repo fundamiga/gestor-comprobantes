@@ -145,12 +145,12 @@ export function ModalCrearLote({
                 letterSpacing: "0.05em",
               }}
             >
-              Número
+              Número inicial del consecutivo (opcional)
             </label>
             <input
               value={referencia}
               onChange={(e) => setReferencia(e.target.value)}
-              placeholder="ej: 001"
+              placeholder="ej: 1732"
               style={{
                 width: "100%",
                 padding: "10px 14px",
