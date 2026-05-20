@@ -187,6 +187,7 @@ export default function Home() {
     eliminarPeriodo,
     crearLote,
     eliminarLote,
+    actualizarLote,
     agregarArchivo,
     eliminarArchivo,
     actualizarArchivosDoc,
@@ -223,6 +224,7 @@ export default function Home() {
               periodo={periodo}
               onCrearLote={(datos) => crearLote(periodo.id, datos)}
               onEliminarLote={(loteId) => eliminarLote(periodo.id, loteId)}
+              onActualizarLote={(loteId, datos) => actualizarLote(periodo.id, loteId, datos)}
               onAgregarArchivo={(loteId, tipoId, arch) =>
                 agregarArchivo(periodo.id, loteId, tipoId, arch)
               }

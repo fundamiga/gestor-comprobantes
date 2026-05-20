@@ -106,6 +106,24 @@ export function useComprobantes() {
     [syncPeriodo]
   );
 
+  const actualizarLote = useCallback(
+    async (periodoId: string, loteId: string, datos: Partial<Lote>) => {
+      setPeriodos((prev) => {
+        const next = prev.map((p) => {
+          if (p.id !== periodoId) return p;
+          const actualizado = {
+            ...p,
+            lotes: p.lotes.map((l) => (l.id === loteId ? { ...l, ...datos } : l)),
+          };
+          syncPeriodo(actualizado);
+          return actualizado;
+        });
+        return next;
+      });
+    },
+    [syncPeriodo]
+  );
+
   // ── Archivos ──────────────────────────────────────────────────────────────
   const agregarArchivo = useCallback(
     async (periodoId: string, loteId: string, tipoId: string, archivo: ArchivoSubido) => {
@@ -187,6 +205,7 @@ export function useComprobantes() {
     eliminarPeriodo,
     crearLote,
     eliminarLote,
+    actualizarLote,
     agregarArchivo,
     eliminarArchivo,
     actualizarArchivosDoc,

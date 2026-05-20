@@ -359,16 +359,6 @@ export function TipoDocCard({
                       break;
                     }
                   }
-                  if (numGrupo === null) {
-                    for (const rawTexto of posiblesTextos) {
-                      const texto = rawTexto.replace(new RegExp(tipo.id, 'gi'), '');
-                      const match = texto.match(/\d+/);
-                      if (match) {
-                        numGrupo = parseInt(match[0], 10);
-                        break;
-                      }
-                    }
-                  }
 
                   const esRepetido = numGrupo !== null && alertaConsecutivo?.repetidos.includes(numGrupo);
 

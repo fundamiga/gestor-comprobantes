@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Building2, AlertCircle, CheckCircle, CheckCircle2, Info, FileDown } from "lucide-react";
+import { ArrowLeft, Building2, AlertCircle, CheckCircle, CheckCircle2, Info, FileDown, Edit2, Check, X } from "lucide-react";
 import type { Lote, Periodo, ArchivoSubido } from "@/types";
 import { TIPOS_DOCUMENTO, MESES } from "@/lib/constantes";
 import { calcularEstadoLote, analizarConsecutivos } from "@/lib/utils";
@@ -15,6 +15,7 @@ interface VistaLoteProps {
   onAgregarArchivo: (tipoId: string, archivo: ArchivoSubido) => void;
   onEliminarArchivo: (tipoId: string, archivoId: string) => void;
   onActualizarArchivosDoc: (tipoId: string, nuevosArchivos: ArchivoSubido[]) => void;
+  onActualizarLote: (datos: Partial<Lote>) => void;
   onVolver: () => void;
 }
 
@@ -24,9 +25,19 @@ export function VistaLote({
   onAgregarArchivo,
   onEliminarArchivo,
   onActualizarArchivosDoc,
+  onActualizarLote,
   onVolver,
 }: VistaLoteProps) {
   const [visorArchivo, setVisorArchivo] = useState<ArchivoSubido | null>(null);
+  const [editando, setEditando] = useState(false);
+  const [provEdit, setProvEdit] = useState(lote.proveedor);
+  const [refEdit, setRefEdit] = useState(lote.referencia || "");
+
+  const handleGuardarEdicion = () => {
+    if (!provEdit.trim()) return;
+    onActualizarLote({ proveedor: provEdit.trim(), referencia: refEdit.trim() });
+    setEditando(false);
+  };
   const estado = calcularEstadoLote(lote);
   const requeridos = TIPOS_DOCUMENTO.filter((t) => t.requerido);
   const faltantes = requeridos.filter(
@@ -123,35 +134,123 @@ export function VistaLote({
               <Building2 size={22} style={{ color: "#10b981" }} />
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <h2
-                style={{
-                  margin: 0,
-                  fontWeight: 900,
-                  fontSize: 18,
-                  color: "#0f172a",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {lote.proveedor}
-              </h2>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  marginTop: 3,
-                  flexWrap: "wrap",
-                }}
-              >
-                {lote.referencia && (
-                  <span style={{ fontSize: 11, color: "#94a3b8" }}>
-                    Ref: {lote.referencia}
-                  </span>
-                )}
-                <EstadoBadge estado={estado} />
-              </div>
+              {editando ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <input
+                    value={provEdit}
+                    onChange={(e) => setProvEdit(e.target.value)}
+                    placeholder="Nombre del Lote"
+                    style={{
+                      padding: "6px 10px",
+                      border: "1.5px solid #10b981",
+                      borderRadius: 8,
+                      fontSize: 16,
+                      fontWeight: 900,
+                      outline: "none",
+                      width: "100%",
+                      maxWidth: 300,
+                    }}
+                  />
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 11, color: "#475569", fontWeight: 700 }}>Ref:</span>
+                    <input
+                      value={refEdit}
+                      onChange={(e) => setRefEdit(e.target.value)}
+                      placeholder="Número inicial del consecutivo"
+                      style={{
+                        padding: "4px 8px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 6,
+                        fontSize: 12,
+                        outline: "none",
+                        width: 150,
+                      }}
+                    />
+                    <button
+                      onClick={handleGuardarEdicion}
+                      style={{
+                        background: "#10b981",
+                        border: "none",
+                        borderRadius: 6,
+                        color: "#fff",
+                        padding: "4px 8px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Check size={14} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setProvEdit(lote.proveedor);
+                        setRefEdit(lote.referencia || "");
+                        setEditando(false);
+                      }}
+                      style={{
+                        background: "#fef2f2",
+                        border: "1px solid #fecaca",
+                        borderRadius: 6,
+                        color: "#ef4444",
+                        padding: "4px 8px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <h2
+                      style={{
+                        margin: 0,
+                        fontWeight: 900,
+                        fontSize: 18,
+                        color: "#0f172a",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {lote.proveedor}
+                    </h2>
+                    <button
+                      onClick={() => setEditando(true)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "#94a3b8",
+                        display: "flex",
+                        padding: 4,
+                      }}
+                      title="Editar nombre y número de lote"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      marginTop: 3,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    {lote.referencia && (
+                      <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                        Ref: {lote.referencia}
+                      </span>
+                    )}
+                    <EstadoBadge estado={estado} />
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

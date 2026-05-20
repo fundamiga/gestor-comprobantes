@@ -26,6 +26,7 @@ interface VistaMesProps {
   periodo: Periodo;
   onCrearLote: (datos: Pick<Lote, "proveedor" | "referencia" | "tipoPago">) => void;
   onEliminarLote: (loteId: string) => void;
+  onActualizarLote: (loteId: string, datos: Partial<Lote>) => void;
   onAgregarArchivo: (loteId: string, tipoId: string, archivo: ArchivoSubido) => void;
   onEliminarArchivo: (loteId: string, tipoId: string, archivoId: string) => void;
   onActualizarArchivosDoc: (loteId: string, tipoId: string, nuevosArchs: ArchivoSubido[]) => void;
@@ -36,6 +37,7 @@ export function VistaMes({
   periodo,
   onCrearLote,
   onEliminarLote,
+  onActualizarLote,
   onAgregarArchivo,
   onEliminarArchivo,
   onActualizarArchivosDoc,
@@ -69,6 +71,7 @@ export function VistaMes({
             onActualizarArchivosDoc={(tipoId, nuevosArchs) =>
               onActualizarArchivosDoc(loteAbierto, tipoId, nuevosArchs)
             }
+            onActualizarLote={(datos) => onActualizarLote(loteAbierto, datos)}
             onVolver={() => setLoteAbierto(null)}
           />
         </motion.div>

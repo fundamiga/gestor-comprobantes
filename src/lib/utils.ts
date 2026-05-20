@@ -122,17 +122,6 @@ export function analizarConsecutivos(periodo: Periodo): Record<string, AlertaCon
             }
           }
 
-          // Si no encontramos número en el nombre renombrado ni en los archivos, probamos otra vez sin ignorar "Pareja X"
-          if (num === null) {
-            for (const rawTexto of posiblesTextos) {
-              const texto = rawTexto.replace(new RegExp(tipo.id, 'gi'), '');
-              const match = texto.match(/\d+/);
-              if (match) {
-                num = parseInt(match[0], 10);
-                break;
-              }
-            }
-          }
 
           if (num !== null) {
             numerosEncontrados.push(num);
