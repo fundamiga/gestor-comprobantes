@@ -95,7 +95,7 @@ export function ModalCrearLote({
 
         {/* Campos */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* Proveedor */}
+          {/* Proveedor / Nombre del lote */}
           <div>
             <label
               style={{
@@ -108,13 +108,13 @@ export function ModalCrearLote({
                 letterSpacing: "0.05em",
               }}
             >
-              Proveedor / Concepto *
+              Nombre de lote *
             </label>
             <input
               value={proveedor}
               onChange={(e) => setProveedor(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCrear()}
-              placeholder="ej: Legon Telecomunicaciones"
+              placeholder="ej: Lote Papelería"
               autoFocus
               style={{
                 width: "100%",
@@ -132,7 +132,7 @@ export function ModalCrearLote({
             />
           </div>
 
-          {/* Referencia */}
+          {/* Referencia / Número */}
           <div>
             <label
               style={{
@@ -145,12 +145,12 @@ export function ModalCrearLote({
                 letterSpacing: "0.05em",
               }}
             >
-              Referencia / N° Factura
+              Número
             </label>
             <input
               value={referencia}
               onChange={(e) => setReferencia(e.target.value)}
-              placeholder="ej: CC-9-1604"
+              placeholder="ej: 001"
               style={{
                 width: "100%",
                 padding: "10px 14px",
@@ -167,42 +167,7 @@ export function ModalCrearLote({
             />
           </div>
 
-          {/* Tipo de pago */}
-          <div>
-            <label
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: "#475569",
-                display: "block",
-                marginBottom: 5,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-              }}
-            >
-              Tipo de gasto
-            </label>
-            <select
-              value={tipoPago}
-              onChange={(e) => setTipoPago(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 14px",
-                border: "1.5px solid #e2e8f0",
-                borderRadius: 12,
-                fontSize: 13,
-                outline: "none",
-                background: "#fff",
-                fontFamily: "inherit",
-              }}
-            >
-              {TIPOS_PAGO.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </div>
+
         </div>
 
         {/* Botones */}
