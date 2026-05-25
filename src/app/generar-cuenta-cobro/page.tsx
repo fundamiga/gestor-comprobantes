@@ -26,13 +26,19 @@ export default function GenerarCuentaCobroPage() {
   const [firmaUrl, setFirmaUrl] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
-  // Autocompletado
+  // Autocompletado Proveedores
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [firmasCloud, setFirmasCloud] = useState<FirmaEntry[]>([]);
   const [sugerencias, setSugerencias] = useState<Proveedor[]>([]);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
   const [cargandoDatos, setCargandoDatos] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Autocompletado Firmas (Manual)
+  const [busquedaFirma, setBusquedaFirma] = useState("");
+  const [sugerenciasFirma, setSugerenciasFirma] = useState<FirmaEntry[]>([]);
+  const [mostrarSugerenciasFirma, setMostrarSugerenciasFirma] = useState(false);
+  const wrapperFirmaRef = useRef<HTMLDivElement>(null);
 
   // Modales
   const [modalFirma, setModalFirma] = useState(false);
@@ -73,17 +79,38 @@ export default function GenerarCuentaCobroPage() {
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setMostrarSugerencias(false);
+      if (wrapperFirmaRef.current && !wrapperFirmaRef.current.contains(e.target as Node)) setMostrarSugerenciasFirma(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleNombreChange = (val: string) => {
-    setNombre(val); setFirmaUrl(null); setFirma(null);
+    setNombre(val); setFirmaUrl(null); setFirma(null); setBusquedaFirma("");
     if (val.length >= 1) {
       const filtradas = proveedores.filter((p) => p.nombre.toLowerCase().includes(val.toLowerCase()));
       setSugerencias(filtradas); setMostrarSugerencias(filtradas.length > 0);
     } else { setSugerencias([]); setMostrarSugerencias(false); }
+  };
+
+  const handleBusquedaFirmaChange = (val: string) => {
+    setBusquedaFirma(val);
+    if (val.length >= 1) {
+      const filtradas = firmasCloud.filter(f => normalizeString(f.nombre).includes(normalizeString(val)));
+      setSugerenciasFirma(filtradas);
+      setMostrarSugerenciasFirma(filtradas.length > 0);
+    } else {
+      setSugerenciasFirma([]);
+      setMostrarSugerenciasFirma(false);
+    }
+  };
+
+  const seleccionarFirmaManual = (firmaObj: FirmaEntry) => {
+    setFirmaUrl(firmaObj.url);
+    setFirma(null);
+    setBusquedaFirma("");
+    setMostrarSugerenciasFirma(false);
+    toast.success("Firma asignada manualmente.");
   };
 
   const normalizeString = (s: string) => {
@@ -259,14 +286,38 @@ export default function GenerarCuentaCobroPage() {
               <div style={{ border: "2px dashed #cbd5e1", borderRadius: 16, padding: 24, textAlign: "center" as const, background: firmaUrl ? "#dcfce7" : "#f8fafc", cursor: "pointer", position: "relative" as const, transition: "all 0.2s" }}>
                 <input type="file" accept="image/png, image/jpeg, image/jpg"
                   onChange={(e) => { if (e.target.files && e.target.files.length > 0) { setFirma(e.target.files[0]); setFirmaUrl(null); } }}
-                  style={{ position: "absolute" as const, inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
-                <UploadCloud size={28} style={{ color: firmaUrl ? "#22c55e" : "#94a3b8", margin: "0 auto 8px" }} />
+                  style={{ position: "absolute" as const, inset: 0, opacity: 0, cursor: "pointer", width: "100%", zIndex: 10 }} />
+                <UploadCloud size={28} style={{ color: firmaUrl ? "#22c55e" : "#94a3b8", margin: "0 auto 8px", position: "relative", zIndex: 5 }} />
                 {firma ? (
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#3b82f6" }}>{firma.name}</p>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#3b82f6", position: "relative", zIndex: 5 }}>{firma.name}</p>
                 ) : firmaUrl ? (
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#22c55e" }}>✅ Firma detectada automáticamente</p>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#22c55e", position: "relative", zIndex: 5 }}>✅ Firma detectada o seleccionada</p>
                 ) : (
-                  <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Sube una imagen (PNG o JPG) o selecciona un nombre arriba</p>
+                  <p style={{ margin: 0, fontSize: 13, color: "#64748b", position: "relative", zIndex: 5 }}>Sube una imagen (PNG o JPG) o selecciona un nombre arriba</p>
+                )}
+              </div>
+              
+              {/* Buscador manual de firmas */}
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6, position: "relative" }} ref={wrapperFirmaRef}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>O busca la firma en la base de datos manualmente:</label>
+                <div style={{ position: "relative" }}>
+                  <input type="text" value={busquedaFirma} onChange={(e) => handleBusquedaFirmaChange(e.target.value)}
+                    onFocus={() => { if (busquedaFirma.length >= 1 && sugerenciasFirma.length > 0) setMostrarSugerenciasFirma(true); }}
+                    placeholder="Buscar firma por nombre..." style={{ ...inputStyle, paddingRight: 36, width: "100%", boxSizing: "border-box" as const, fontSize: 13, padding: "10px 14px" }} />
+                  <Search size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
+                </div>
+                {mostrarSugerenciasFirma && (
+                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 12, marginTop: 4, maxHeight: 180, overflowY: "auto" as const, zIndex: 50, boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }}>
+                    {sugerenciasFirma.map((s, i) => (
+                      <div key={i} onClick={() => seleccionarFirmaManual(s)}
+                        style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13, color: "#0f172a", borderBottom: i < sugerenciasFirma.length - 1 ? "1px solid #f1f5f9" : "none", display: "flex", alignItems: "center", gap: 8 }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#eff6ff")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}>
+                        <PenTool size={14} style={{ color: "#3b82f6" }} />
+                        <span>{s.nombre}</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
