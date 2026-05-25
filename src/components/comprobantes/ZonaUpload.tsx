@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, FileText, Image as ImageIcon, Eye, Trash2, Download, FileSpreadsheet } from "lucide-react";
+import { Upload, FileText, Image as ImageIcon, Eye, Trash2, Download, FileSpreadsheet, Wand2 } from "lucide-react";
 import type { ArchivoSubido, TipoDocumento } from "@/types";
 import { uid, formatKb, obtenerUrlDescargaCloudinary } from "@/lib/utils";
 import { subirACloudinary } from "@/lib/cloudinary";
@@ -66,6 +66,60 @@ export function ZonaUpload({
       }
     }
     setCargando(false);
+  };
+
+  const generarCuentaCobro = async (arch: ArchivoSubido) => {
+    const toastId = toast.loading("Generando Cuenta de Cobro...");
+    try {
+      // 1. Descargar el PDF desde Cloudinary
+      const resPdf = await fetch(obtenerUrlDescargaCloudinary(arch.url));
+      const blob = await resPdf.blob();
+      
+      // 2. Enviar al API
+      const formData = new FormData();
+      formData.append("file", blob, arch.nombre);
+      
+      const resApi = await fetch("/api/generar-cuenta-cobro", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!resApi.ok) {
+        const err = await resApi.json();
+        throw new Error(err.error || "Error en el servidor");
+      }
+
+      // 3. Descargar el Excel resultante
+      const excelBlob = await resApi.blob();
+      // Extraer el nombre del header Content-Disposition si es posible, o usar uno por defecto
+      const disposition = resApi.headers.get("Content-Disposition");
+      let filename = "Cuenta_Cobro.pdf";
+      if (disposition && disposition.includes("filename=")) {
+        filename = disposition.split("filename=")[1].replace(/"/g, "");
+      }
+      
+      // 4. Convertir a File y subir a Cloudinary para adjuntar a la pareja
+      toast.loading(`Adjuntando "${filename}" a la pareja...`, { id: toastId });
+      const file = new File([excelBlob], filename, { type: "application/pdf" });
+      const url = await subirACloudinary(file);
+      
+      const nuevo: ArchivoSubido = {
+        id: uid(),
+        nombre: filename,
+        tipo: file.type,
+        url,
+        fechaSubida: new Date().toLocaleDateString("es-CO"),
+        tamanioKb: Math.round(file.size / 1024),
+        grupoId: arch.grupoId,
+        grupoNombre: arch.grupoNombre,
+      };
+      
+      onAgregar(nuevo);
+
+      toast.success("Cuenta de Cobro generada y adjuntada a la pareja", { id: toastId });
+    } catch (err: any) {
+      toast.error(`Error generando cuenta de cobro: ${err.message}`, { id: toastId });
+    }
   };
 
   return (
@@ -156,6 +210,28 @@ export function ZonaUpload({
               >
                 <Download size={14} />
               </a>
+              {tipoDoc.id === "DS" && arch.tipo === "application/pdf" && (
+                <button
+                  onClick={() => generarCuentaCobro(arch)}
+                  title="Generar Cuenta de Cobro (PDF) y adjuntar a pareja"
+                  style={{
+                    background: "#10b981",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "#fff",
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    marginLeft: 4,
+                  }}
+                >
+                  <Wand2 size={12} /> Autocompletar
+                </button>
+              )}
               <button
                 onClick={() => onEliminar(arch.id)}
                 title="Eliminar"

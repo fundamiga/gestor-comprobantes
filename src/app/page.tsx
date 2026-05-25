@@ -8,7 +8,9 @@ import {
   Calendar,
   ChevronRight,
   X,
+  FileText,
 } from "lucide-react";
+import Link from "next/link";
 import { useComprobantes } from "@/hooks/useComprobantes";
 import { MESES, TIPOS_DOCUMENTO } from "@/lib/constantes";
 import { motion } from "framer-motion";
@@ -679,25 +681,47 @@ function Navbar({ onNuevoPeriodo }: { onNuevoPeriodo: () => void }) {
           </span>
         </div>
       </div>
-      <button
-        onClick={onNuevoPeriodo}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-          background: "#10b981",
-          color: "#fff",
-          border: "none",
-          borderRadius: 12,
-          padding: "9px 18px",
-          cursor: "pointer",
-          fontWeight: 800,
-          fontSize: 12,
-          fontFamily: "inherit",
-        }}
-      >
-        <Plus size={16} /> Nuevo Período
-      </button>
+      <div style={{ display: "flex", gap: 10 }}>
+        <Link
+          href="/generar-cuenta-cobro"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            background: "#fff",
+            color: "#3b82f6",
+            border: "1.5px solid #bfdbfe",
+            borderRadius: 12,
+            padding: "9px 18px",
+            cursor: "pointer",
+            fontWeight: 800,
+            fontSize: 12,
+            fontFamily: "inherit",
+            textDecoration: "none",
+          }}
+        >
+          <FileText size={16} /> Crear Cuenta Cobro
+        </Link>
+        <button
+          onClick={onNuevoPeriodo}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            background: "#10b981",
+            color: "#fff",
+            border: "none",
+            borderRadius: 12,
+            padding: "9px 18px",
+            cursor: "pointer",
+            fontWeight: 800,
+            fontSize: 12,
+            fontFamily: "inherit",
+          }}
+        >
+          <Plus size={16} /> Nuevo Período
+        </button>
+      </div>
     </nav>
   );
 }
