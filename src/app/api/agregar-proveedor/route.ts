@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import path from "path";
-import ExcelJS from "exceljs";
-import fs from "fs";
+import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -20,47 +18,22 @@ export async function POST(req: NextRequest) {
     const nombreStr = nombre.trim();
     const cedulaStr = cedula.trim();
 
-    const filePath = path.join(process.cwd(), "ejemplos", "nombre y cedula.xlsx");
+    // Insertar en Supabase. Si el nombre ya existe (ignorando mayúsculas/minúsculas), fallará por el índice único
+    const { data, error } = await supabase
+      .from("proveedores")
+      .insert([{ nombre: nombreStr, cedula: cedulaStr }])
+      .select();
 
-    let workbook: ExcelJS.Workbook;
-    let sheet: ExcelJS.Worksheet;
-
-    if (fs.existsSync(filePath)) {
-      workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.readFile(filePath);
-      sheet = workbook.worksheets[0];
-    } else {
-      workbook = new ExcelJS.Workbook();
-      sheet = workbook.addWorksheet("Proveedores");
-    }
-
-    // Verificar si ya existe
-    let yaExiste = false;
-    sheet.eachRow((row) => {
-      const v1 = row.values[1];
-      if (v1 && typeof v1 === "string") {
-        // Formato "Nombre – Cedula"
-        const parts = String(v1).split(/[-–]/);
-        const existingName = parts[0].trim().toLowerCase();
-        if (existingName === nombreStr.toLowerCase()) {
-          yaExiste = true;
-        }
+    if (error) {
+      console.error("Error insertando proveedor en Supabase:", error);
+      if (error.code === '23505') { // Unique violation
+        return NextResponse.json(
+          { error: "Esta persona ya existe en la base de datos" },
+          { status: 409 }
+        );
       }
-    });
-
-    if (yaExiste) {
-      return NextResponse.json(
-        { error: "Esta persona ya existe en la base de datos" },
-        { status: 409 }
-      );
+      throw error;
     }
-
-    // Agregar nueva fila en formato "Nombre – Cedula"
-    const nuevaFila = `${nombreStr} – ${cedulaStr}`;
-    const lastRow = sheet.rowCount + 1;
-    sheet.getRow(lastRow).getCell(1).value = nuevaFila;
-
-    await workbook.xlsx.writeFile(filePath);
 
     return NextResponse.json({
       success: true,
