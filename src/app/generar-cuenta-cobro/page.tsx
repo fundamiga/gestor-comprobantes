@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, FileText, UploadCloud, FileDown, Loader2, Search, UserPlus, PenTool, X } from "lucide-react";
+import { ArrowLeft, FileText, UploadCloud, FileDown, Loader2, Search, UserPlus, PenTool, X, Users } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -43,6 +43,7 @@ export default function GenerarCuentaCobroPage() {
   // Modales
   const [modalFirma, setModalFirma] = useState(false);
   const [modalProveedor, setModalProveedor] = useState(false);
+  const [modalLista, setModalLista] = useState(false);
   const [nuevoFirmaNombre, setNuevoFirmaNombre] = useState("");
   const [nuevoFirmaArchivo, setNuevoFirmaArchivo] = useState<File | null>(null);
   const [subiendoFirma, setSubiendoFirma] = useState(false);
@@ -222,6 +223,9 @@ export default function GenerarCuentaCobroPage() {
 
           {/* BOTONES DE GESTIÓN */}
           <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+            <button onClick={() => setModalLista(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", background: "#f8fafc", border: "1.5px solid #e2e8f0", borderRadius: 14, color: "#475569", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
+              <Users size={16} /> Ver Registrados
+            </button>
             <button onClick={() => setModalProveedor(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: 14, color: "#15803d", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
               <UserPlus size={16} /> Agregar Persona
             </button>
@@ -391,6 +395,34 @@ export default function GenerarCuentaCobroPage() {
                 <button onClick={handleAgregarProveedor} disabled={guardandoProv} style={{ marginTop: 6, background: guardandoProv ? "#86efac" : "#22c55e", color: "#fff", border: "none", borderRadius: 12, padding: "12px 20px", fontSize: 14, fontWeight: 800, cursor: guardandoProv ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "inherit" }}>
                   {guardandoProv ? (<><Loader2 size={16} className="animate-spin" /> Guardando...</>) : (<><UserPlus size={16} /> Guardar Persona</>)}
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL VER REGISTRADOS */}
+      <AnimatePresence>
+        {modalLista && (
+          <motion.div style={modalOverlay} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setModalLista(false)}>
+            <motion.div style={{...modalBox, maxWidth: 500}} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => setModalLista(false)} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}><X size={20} /></button>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                <div style={{ width: 40, height: 40, background: "#f8fafc", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Users size={20} style={{ color: "#475569" }} />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Personas Registradas</h2>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>{proveedores.length} personas en la base de datos</p>
+                </div>
+              </div>
+              <div style={{ maxHeight: 400, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingRight: 8 }}>
+                {proveedores.map((p, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{p.nombre}</span>
+                    <span style={{ fontSize: 13, color: "#64748b", fontFamily: "monospace" }}>{p.cedula}</span>
+                  </div>
+                ))}
               </div>
             </motion.div>
           </motion.div>
