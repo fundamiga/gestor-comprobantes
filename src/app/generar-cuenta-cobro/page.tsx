@@ -285,15 +285,29 @@ export default function GenerarCuentaCobroPage() {
                 </div>
                 {mostrarSugerencias && (
                   <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 12, marginTop: 4, maxHeight: 200, overflowY: "auto" as const, zIndex: 50, boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }}>
-                    {sugerencias.map((s, i) => (
+                    {sugerencias.map((s, i) => {
+                      const nombreNorm = normalizeString(s.nombre);
+                      const tieneFirma = firmasCloud.some((f) => {
+                        const fNorm = normalizeString(f.nombre);
+                        if (fNorm.includes(nombreNorm) || nombreNorm.includes(fNorm)) return true;
+                        const fW = fNorm.split(" ").filter(Boolean);
+                        if (fW.length > 0 && fW.every(w => nombreNorm.includes(w))) return true;
+                        const pW = nombreNorm.split(" ").filter(Boolean);
+                        return pW.length > 0 && pW.every(w => fNorm.includes(w));
+                      });
+                      return (
                       <div key={i} onClick={() => seleccionarProveedor(s)}
-                        style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: "#0f172a", borderBottom: i < sugerencias.length - 1 ? "1px solid #f1f5f9" : "none", display: "flex", justifyContent: "space-between" }}
+                        style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: "#0f172a", borderBottom: i < sugerencias.length - 1 ? "1px solid #f1f5f9" : "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = "#eff6ff")}
                         onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}>
-                        <span>{s.nombre}</span>
+                        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {s.nombre}
+                          {tieneFirma && <span style={{ fontSize: 10, background: "#dcfce7", color: "#15803d", padding: "1px 6px", borderRadius: 12, fontWeight: 700 }}>✍️ Firma</span>}
+                        </span>
                         <span style={{ color: "#94a3b8", fontSize: 12 }}>{s.cedula}</span>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
