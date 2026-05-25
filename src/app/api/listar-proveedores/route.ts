@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   try {
     const { data: proveedores, error } = await supabase
       .from("proveedores")
-      .select("nombre, cedula")
+      .select("id, nombre, cedula")
       .order("nombre", { ascending: true });
 
     if (error) {

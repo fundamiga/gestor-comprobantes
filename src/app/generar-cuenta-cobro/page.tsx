@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, FileText, UploadCloud, FileDown, Loader2, Search, UserPlus, PenTool, X, Users } from "lucide-react";
+import { ArrowLeft, FileText, UploadCloud, FileDown, Loader2, Search, UserPlus, PenTool, X, Users, Trash2, Edit2, Check } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Proveedor {
+  id?: string;
   nombre: string;
   cedula: string;
 }
@@ -51,6 +52,12 @@ export default function GenerarCuentaCobroPage() {
   const [nuevoProvCedula, setNuevoProvCedula] = useState("");
   const [guardandoProv, setGuardandoProv] = useState(false);
 
+  // Edición y Eliminación en Lista
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editNombre, setEditNombre] = useState("");
+  const [editCedula, setEditCedula] = useState("");
+  const [procesandoAccion, setProcesandoAccion] = useState(false);
+
   // Cargar datos
   const cargarDatos = async () => {
     setCargandoDatos(true);
@@ -66,7 +73,7 @@ export default function GenerarCuentaCobroPage() {
       const nombresExcel = new Set(provs.map((p) => p.nombre.toLowerCase()));
       for (const f of firmas) {
         if (!nombresExcel.has(f.nombre.toLowerCase())) {
-          provs.push({ nombre: f.nombre, cedula: "" });
+          provs.push({ id: undefined, nombre: f.nombre, cedula: "" });
         }
       }
       provs.sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -145,7 +152,6 @@ export default function GenerarCuentaCobroPage() {
       const data = await res.json();
       toast.success(`Firma de "${data.nombre}" subida exitosamente.`);
       setModalFirma(false); setNuevoFirmaNombre(""); setNuevoFirmaArchivo(null);
-      // Recargar firmas
       await cargarDatos();
     } catch (err: any) { toast.error(err.message); }
     finally { setSubiendoFirma(false); }
@@ -167,6 +173,35 @@ export default function GenerarCuentaCobroPage() {
       await cargarDatos();
     } catch (err: any) { toast.error(err.message); }
     finally { setGuardandoProv(false); }
+  };
+
+  const handleEliminarProveedor = async (id: string, nombre: string) => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar permanentemente a "${nombre}" de la base de datos?`)) return;
+    setProcesandoAccion(true);
+    try {
+      const res = await fetch(`/api/eliminar-proveedor?id=${id}`, { method: "DELETE" });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      toast.success("Persona eliminada correctamente.");
+      await cargarDatos();
+    } catch (err: any) { toast.error(err.message); }
+    finally { setProcesandoAccion(false); }
+  };
+
+  const guardarEdicionProveedor = async () => {
+    if (!editNombre || !editCedula || !editandoId) { toast.error("Nombre y cédula son obligatorios."); return; }
+    setProcesandoAccion(true);
+    try {
+      const res = await fetch("/api/editar-proveedor", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editandoId, nombre: editNombre, cedula: editCedula }),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      toast.success("Persona actualizada correctamente.");
+      setEditandoId(null);
+      await cargarDatos();
+    } catch (err: any) { toast.error(err.message); }
+    finally { setProcesandoAccion(false); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -404,9 +439,9 @@ export default function GenerarCuentaCobroPage() {
       {/* MODAL VER REGISTRADOS */}
       <AnimatePresence>
         {modalLista && (
-          <motion.div style={modalOverlay} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setModalLista(false)}>
-            <motion.div style={{...modalBox, maxWidth: 500}} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()}>
-              <button onClick={() => setModalLista(false)} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}><X size={20} /></button>
+          <motion.div style={modalOverlay} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setModalLista(false); setEditandoId(null); }}>
+            <motion.div style={{...modalBox, maxWidth: 540}} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => { setModalLista(false); setEditandoId(null); }} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}><X size={20} /></button>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
                 <div style={{ width: 40, height: 40, background: "#f8fafc", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Users size={20} style={{ color: "#475569" }} />
@@ -418,9 +453,38 @@ export default function GenerarCuentaCobroPage() {
               </div>
               <div style={{ maxHeight: 400, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingRight: 8 }}>
                 {proveedores.map((p, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{p.nombre}</span>
-                    <span style={{ fontSize: 13, color: "#64748b", fontFamily: "monospace" }}>{p.cedula}</span>
+                  <div key={i} style={{ padding: "12px 16px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
+                    {editandoId === p.id && p.id ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <input type="text" value={editNombre} onChange={e => setEditNombre(e.target.value)} placeholder="Nombre" style={{...inputStyle, padding: "8px 12px"}} />
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <input type="text" value={editCedula} onChange={e => setEditCedula(e.target.value)} placeholder="Cédula" style={{...inputStyle, padding: "8px 12px", flex: 1}} />
+                          <button onClick={guardarEdicionProveedor} disabled={procesandoAccion} style={{ background: "#22c55e", color: "white", border: "none", borderRadius: 8, padding: "0 14px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                            {procesandoAccion ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                          </button>
+                          <button onClick={() => setEditandoId(null)} disabled={procesandoAccion} style={{ background: "#e2e8f0", color: "#475569", border: "none", borderRadius: 8, padding: "0 14px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{p.nombre}</span>
+                          <span style={{ fontSize: 13, color: "#64748b", fontFamily: "monospace" }}>{p.cedula}</span>
+                        </div>
+                        {p.id && (
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button disabled={procesandoAccion} onClick={() => { setEditandoId(p.id!); setEditNombre(p.nombre); setEditCedula(p.cedula); }} style={{ background: "#eff6ff", color: "#3b82f6", border: "none", borderRadius: 8, padding: "8px", cursor: "pointer", display: "flex" }}>
+                              <Edit2 size={14} />
+                            </button>
+                            <button disabled={procesandoAccion} onClick={() => handleEliminarProveedor(p.id!, p.nombre)} style={{ background: "#fef2f2", color: "#ef4444", border: "none", borderRadius: 8, padding: "8px", cursor: "pointer", display: "flex" }}>
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
