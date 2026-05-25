@@ -470,8 +470,15 @@ export default function GenerarCuentaCobroPage() {
                     ) : (
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ display: "flex", flexDirection: "column" }}>
-                          <span style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{p.nombre}</span>
-                          <span style={{ fontSize: 13, color: "#64748b", fontFamily: "monospace" }}>{p.cedula}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{p.nombre}</span>
+                            {!p.id && (
+                              <span style={{ fontSize: 10, background: "#fef3c7", color: "#d97706", padding: "2px 6px", borderRadius: 12, fontWeight: 700 }}>
+                                Solo Firma
+                              </span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: 13, color: "#64748b", fontFamily: "monospace" }}>{p.cedula || "Sin cédula"}</span>
                         </div>
                         {p.id && (
                           <div style={{ display: "flex", gap: 6 }}>
