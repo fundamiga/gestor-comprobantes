@@ -168,18 +168,7 @@ export async function POST(req: NextRequest) {
     } else {
       drawText(concepto.toUpperCase(), valueStartX, descY, 11);
     }
-    
-    // Dividir concepto largo en múltiples líneas si es necesario
-    const maxChars = 60;
-    let descY = currentY;
-    if (concepto.length > maxChars) {
-      drawText(concepto.substring(0, maxChars), marginX + 140, descY, 12);
-      descY -= 15;
-      drawText(concepto.substring(maxChars, maxChars * 2), marginX + 140, descY, 12);
-      currentY = descY;
-    } else {
-      drawText(concepto, marginX + 140, descY, 12);
-    }
+
 
     currentY -= 60;
     const textoLegal = "Declaro voluntariamente y bajo la gravedad de juramento, que no soy responsable del impuesto\n" +
