@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, FileText, UploadCloud, FileDown, Loader2, Search, UserPlus, PenTool, X, Users, Trash2, Edit2, Check, Image as ImageIcon, Crop as CropIcon } from "lucide-react";
+import { ArrowLeft, FileText, UploadCloud, FileDown, Loader2, Search, UserPlus, PenTool, X, Users, Trash2, Edit2, Check, Image as ImageIcon, Crop as CropIcon, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -71,6 +71,13 @@ export default function GenerarCuentaCobroPage() {
   const [editCedula, setEditCedula] = useState("");
   const [procesandoAccion, setProcesandoAccion] = useState(false);
 
+  // Vincular Firma en Lista
+  const [vinculandoId, setVinculandoId] = useState<string | null>(null);
+  const [busquedaVincular, setBusquedaVincular] = useState("");
+  const [sugerenciasVincular, setSugerenciasVincular] = useState<FirmaEntry[]>([]);
+  const [mostrarSugerenciasVincular, setMostrarSugerenciasVincular] = useState(false);
+  const wrapperVincularRef = useRef<HTMLDivElement>(null);
+
   // Cargar datos
   const cargarDatos = async (forceRefreshFirmas = false) => {
     setCargandoDatos(true);
@@ -102,6 +109,7 @@ export default function GenerarCuentaCobroPage() {
     function handleClickOutside(e: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setMostrarSugerencias(false);
       if (wrapperFirmaRef.current && !wrapperFirmaRef.current.contains(e.target as Node)) setMostrarSugerenciasFirma(false);
+      if (wrapperVincularRef.current && !wrapperVincularRef.current.contains(e.target as Node)) setMostrarSugerenciasVincular(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -124,6 +132,18 @@ export default function GenerarCuentaCobroPage() {
     } else {
       setSugerenciasFirma([]);
       setMostrarSugerenciasFirma(false);
+    }
+  };
+
+  const handleBusquedaVincularChange = (val: string) => {
+    setBusquedaVincular(val);
+    if (val.length >= 1) {
+      const filtradas = firmasCloud.filter(f => normalizeString(f.nombre).includes(normalizeString(val)));
+      setSugerenciasVincular(filtradas);
+      setMostrarSugerenciasVincular(filtradas.length > 0);
+    } else {
+      setSugerenciasVincular([]);
+      setMostrarSugerenciasVincular(false);
     }
   };
 
@@ -253,6 +273,25 @@ export default function GenerarCuentaCobroPage() {
       const res = await fetch(`/api/borrar-firma?nombre=${encodeURIComponent(nombreFirma)}`, { method: "DELETE" });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
       toast.success("Firma eliminada de la nube.");
+      await cargarDatos(true);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setProcesandoAccion(false);
+    }
+  };
+
+  const handleVincularFirma = async (nombrePersona: string, firmaObj: FirmaEntry) => {
+    setProcesandoAccion(true);
+    setVinculandoId(null);
+    try {
+      const res = await fetch("/api/vincular-firma", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombrePersona, urlFirma: firmaObj.url })
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      toast.success(`Firma vinculada a ${nombrePersona} exitosamente.`);
       await cargarDatos(true);
     } catch (err: any) {
       toast.error(err.message);
@@ -647,9 +686,9 @@ export default function GenerarCuentaCobroPage() {
       {/* MODAL VER REGISTRADOS */}
       <AnimatePresence>
         {modalLista && (
-          <motion.div style={modalOverlay} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setModalLista(false); setEditandoId(null); }}>
+          <motion.div style={modalOverlay} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setModalLista(false); setEditandoId(null); setVinculandoId(null); }}>
             <motion.div style={{...modalBox, maxWidth: 540}} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()}>
-              <button onClick={() => { setModalLista(false); setEditandoId(null); }} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}><X size={20} /></button>
+              <button onClick={() => { setModalLista(false); setEditandoId(null); setVinculandoId(null); }} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}><X size={20} /></button>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
                 <div style={{ width: 40, height: 40, background: "#f8fafc", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Users size={20} style={{ color: "#475569" }} />
@@ -685,17 +724,55 @@ export default function GenerarCuentaCobroPage() {
                                 Solo Firma
                               </span>
                             )}
+                            {p.id && firmasCloud.some(f => normalizeString(f.nombre).includes(normalizeString(p.nombre)) || normalizeString(p.nombre).includes(normalizeString(f.nombre))) && (
+                              <span style={{ fontSize: 10, background: "#dcfce7", color: "#15803d", padding: "2px 6px", borderRadius: 12, fontWeight: 700 }}>
+                                ✍️ Firma
+                              </span>
+                            )}
                           </div>
                           <span style={{ fontSize: 13, color: "#64748b", fontFamily: "monospace" }}>{p.cedula || "Sin cédula"}</span>
                         </div>
                         {p.id && (
                           <div style={{ display: "flex", gap: 6 }}>
-                            <button disabled={procesandoAccion} onClick={() => { setEditandoId(p.id!); setEditNombre(p.nombre); setEditCedula(p.cedula); }} style={{ background: "#eff6ff", color: "#3b82f6", border: "none", borderRadius: 8, padding: "8px", cursor: "pointer", display: "flex" }}>
+                            {!firmasCloud.some(f => normalizeString(f.nombre).includes(normalizeString(p.nombre)) || normalizeString(p.nombre).includes(normalizeString(f.nombre))) && (
+                              <button disabled={procesandoAccion} onClick={() => { setVinculandoId(vinculandoId === p.id ? null : (p.id || null)); setBusquedaVincular(""); setSugerenciasVincular([]); }} style={{ background: vinculandoId === p.id ? "#fef3c7" : "#f1f5f9", color: vinculandoId === p.id ? "#d97706" : "#64748b", border: "none", borderRadius: 8, padding: "8px", cursor: "pointer", display: "flex" }} title="Vincular Firma">
+                                <LinkIcon size={14} />
+                              </button>
+                            )}
+                            <button disabled={procesandoAccion} onClick={() => { setEditandoId(p.id!); setEditNombre(p.nombre); setEditCedula(p.cedula); setVinculandoId(null); }} style={{ background: "#eff6ff", color: "#3b82f6", border: "none", borderRadius: 8, padding: "8px", cursor: "pointer", display: "flex" }}>
                               <Edit2 size={14} />
                             </button>
                             <button disabled={procesandoAccion} onClick={() => handleEliminarProveedor(p.id!, p.nombre)} style={{ background: "#fef2f2", color: "#ef4444", border: "none", borderRadius: 8, padding: "8px", cursor: "pointer", display: "flex" }}>
                               <Trash2 size={14} />
                             </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Buscador para vincular firma */}
+                    {vinculandoId === p.id && (
+                      <div style={{ marginTop: 12, padding: "12px", background: "#fff", borderRadius: 10, border: "1px dashed #cbd5e1" }} ref={wrapperVincularRef}>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 6 }}>Vincular firma manualmente a {p.nombre}:</label>
+                        <div style={{ position: "relative" }}>
+                          <input type="text" value={busquedaVincular} onChange={(e) => handleBusquedaVincularChange(e.target.value)}
+                            onFocus={() => { if (busquedaVincular.length >= 1 && sugerenciasVincular.length > 0) setMostrarSugerenciasVincular(true); }}
+                            placeholder="Buscar firma por nombre..." style={{ ...inputStyle, paddingRight: 36, width: "100%", boxSizing: "border-box" as const, fontSize: 13, padding: "8px 12px" }} />
+                          <Search size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
+                        </div>
+                        {mostrarSugerenciasVincular && (
+                          <div style={{ position: "absolute", background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 12, marginTop: 4, maxHeight: 150, overflowY: "auto" as const, zIndex: 50, boxShadow: "0 8px 24px rgba(0,0,0,0.1)", width: "100%", maxWidth: 350 }}>
+                            {sugerenciasVincular.map((s, i) => (
+                              <div key={i} onClick={() => handleVincularFirma(p.nombre, s)}
+                                style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13, color: "#0f172a", borderBottom: i < sugerenciasVincular.length - 1 ? "1px solid #f1f5f9" : "none", display: "flex", alignItems: "center", gap: 8 }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = "#eff6ff")}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}>
+                                <div style={{ width: 30, height: 20, background: "#f8fafc", borderRadius: 4, border: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                                  <img src={s.url} alt="Firma" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+                                </div>
+                                <span>{s.nombre}</span>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
