@@ -75,9 +75,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const url = new URL(req.url);
+    const forceRefresh = url.searchParams.get("refresh") === "true";
+
     // Revisar cache
     const now = Date.now();
-    if (cachedFirmas.length > 0 && now - lastFetch < CACHE_TTL_MS) {
+    if (!forceRefresh && cachedFirmas.length > 0 && now - lastFetch < CACHE_TTL_MS) {
       return NextResponse.json({ firmas: cachedFirmas });
     }
 

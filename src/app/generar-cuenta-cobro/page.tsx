@@ -72,12 +72,13 @@ export default function GenerarCuentaCobroPage() {
   const [procesandoAccion, setProcesandoAccion] = useState(false);
 
   // Cargar datos
-  const cargarDatos = async () => {
+  const cargarDatos = async (forceRefreshFirmas = false) => {
     setCargandoDatos(true);
     try {
+      const urlFirmas = forceRefreshFirmas ? "/api/listar-firmas?refresh=true" : "/api/listar-firmas";
       const [resProv, resFirmas] = await Promise.all([
         fetch("/api/listar-proveedores"),
-        fetch("/api/listar-firmas"),
+        fetch(urlFirmas),
       ]);
       let provs: Proveedor[] = [];
       let firmas: FirmaEntry[] = [];
@@ -240,7 +241,7 @@ export default function GenerarCuentaCobroPage() {
       const data = await res.json();
       toast.success(`Firma de "${data.nombre}" subida exitosamente.`);
       setModalFirma(false); setNuevoFirmaNombre(""); setNuevoFirmaArchivo(null);
-      await cargarDatos();
+      await cargarDatos(true);
     } catch (err: any) { toast.error(err.message); }
     finally { setSubiendoFirma(false); }
   };
@@ -252,7 +253,7 @@ export default function GenerarCuentaCobroPage() {
       const res = await fetch(`/api/borrar-firma?nombre=${encodeURIComponent(nombreFirma)}`, { method: "DELETE" });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
       toast.success("Firma eliminada de la nube.");
-      await cargarDatos();
+      await cargarDatos(true);
     } catch (err: any) {
       toast.error(err.message);
     } finally {
