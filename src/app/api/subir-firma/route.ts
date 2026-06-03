@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const timestamp = Math.round(Date.now() / 1000);
 
     // Generar firma de Cloudinary (signed upload)
-    const strToSign = `folder=${folder}&public_id=${publicId}&timestamp=${timestamp}${apiSecret}`;
+    const strToSign = `folder=${folder}&invalidate=true&public_id=${publicId}&timestamp=${timestamp}${apiSecret}`;
     const signature = crypto.createHash("sha1").update(strToSign).digest("hex");
 
     // Preparar FormData para Cloudinary
@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
     uploadData.append("signature", signature);
     uploadData.append("folder", folder);
     uploadData.append("public_id", publicId);
+    uploadData.append("invalidate", "true");
 
     const res = await fetch(
       `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,

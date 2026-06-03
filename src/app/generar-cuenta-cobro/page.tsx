@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, FileText, UploadCloud, FileDown, Loader2, Search, UserPlus, PenTool, X, Users, Trash2, Edit2, Check } from "lucide-react";
+import { ArrowLeft, FileText, UploadCloud, FileDown, Loader2, Search, UserPlus, PenTool, X, Users, Trash2, Edit2, Check, Image as ImageIcon, Crop as CropIcon } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactCrop, { type Crop, type PixelCrop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 
 interface Proveedor {
   id?: string;
@@ -45,12 +47,23 @@ export default function GenerarCuentaCobroPage() {
   const [modalFirma, setModalFirma] = useState(false);
   const [modalProveedor, setModalProveedor] = useState(false);
   const [modalLista, setModalLista] = useState(false);
+  const [modalGestionFirmas, setModalGestionFirmas] = useState(false);
+  
   const [nuevoFirmaNombre, setNuevoFirmaNombre] = useState("");
   const [nuevoFirmaArchivo, setNuevoFirmaArchivo] = useState<File | null>(null);
   const [subiendoFirma, setSubiendoFirma] = useState(false);
+  
   const [nuevoProvNombre, setNuevoProvNombre] = useState("");
   const [nuevoProvCedula, setNuevoProvCedula] = useState("");
   const [guardandoProv, setGuardandoProv] = useState(false);
+
+  // Recorte de Firmas
+  const [modalRecorte, setModalRecorte] = useState(false);
+  const [upImg, setUpImg] = useState<string | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [originalFileName, setOriginalFileName] = useState("");
 
   // Edición y Eliminación en Lista
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -140,6 +153,81 @@ export default function GenerarCuentaCobroPage() {
     else { setFirmaUrl(null); toast.success("Nombre y cédula autocompletados."); }
   };
 
+  // --- Funciones de Recorte ---
+  const onSelectFileParaRecorte = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setOriginalFileName(file.name);
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        setUpImg(reader.result?.toString() || "");
+        setModalRecorte(true);
+      });
+      reader.readAsDataURL(file);
+      // Reset input
+      e.target.value = '';
+    }
+  };
+
+  const getCroppedImg = async (image: HTMLImageElement, crop: PixelCrop, fileName: string): Promise<File> => {
+    const canvas = document.createElement("canvas");
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) throw new Error("No 2d context");
+
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      crop.width,
+      crop.height
+    );
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error("Canvas is empty"));
+          return;
+        }
+        resolve(new File([blob], fileName, { type: "image/png" }));
+      }, "image/png");
+    });
+  };
+
+  const handleAceptarRecorte = async () => {
+    if (!completedCrop || !imgRef.current || completedCrop.width === 0 || completedCrop.height === 0) {
+      toast.error("Selecciona un área para recortar arrastrando el ratón sobre la imagen");
+      return;
+    }
+    try {
+      const croppedFile = await getCroppedImg(imgRef.current, completedCrop, originalFileName);
+      setNuevoFirmaArchivo(croppedFile);
+      setModalRecorte(false);
+      setUpImg(null);
+      setCrop(undefined);
+      setCompletedCrop(undefined);
+      toast.success("Recorte aplicado correctamente");
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  const handleCancelarRecorte = () => {
+    setModalRecorte(false);
+    setUpImg(null);
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+  };
+  // -----------------------------
+
   const handleSubirFirma = async () => {
     if (!nuevoFirmaNombre || !nuevoFirmaArchivo) { toast.error("Nombre y archivo son obligatorios."); return; }
     setSubiendoFirma(true);
@@ -155,6 +243,28 @@ export default function GenerarCuentaCobroPage() {
       await cargarDatos();
     } catch (err: any) { toast.error(err.message); }
     finally { setSubiendoFirma(false); }
+  };
+
+  const handleEliminarFirmaCloud = async (nombreFirma: string) => {
+    if (!window.confirm(`¿Seguro que deseas eliminar permanentemente la firma de "${nombreFirma}" de la nube?`)) return;
+    setProcesandoAccion(true);
+    try {
+      const res = await fetch(`/api/borrar-firma?nombre=${encodeURIComponent(nombreFirma)}`, { method: "DELETE" });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      toast.success("Firma eliminada de la nube.");
+      await cargarDatos();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setProcesandoAccion(false);
+    }
+  };
+
+  const handleReemplazarFirma = (nombreFirma: string) => {
+    setModalGestionFirmas(false);
+    setNuevoFirmaNombre(nombreFirma);
+    setNuevoFirmaArchivo(null);
+    setModalFirma(true);
   };
 
   const handleAgregarProveedor = async () => {
@@ -234,6 +344,7 @@ export default function GenerarCuentaCobroPage() {
   const modalBox: React.CSSProperties = {
     background: "#fff", borderRadius: 24, padding: 32, width: "100%", maxWidth: 440,
     boxShadow: "0 20px 60px rgba(0,0,0,0.15)", position: "relative",
+    maxHeight: "90vh", display: "flex", flexDirection: "column"
   };
 
   return (
@@ -257,16 +368,23 @@ export default function GenerarCuentaCobroPage() {
           </div>
 
           {/* BOTONES DE GESTIÓN */}
-          <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-            <button onClick={() => setModalLista(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", background: "#f8fafc", border: "1.5px solid #e2e8f0", borderRadius: 14, color: "#475569", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
-              <Users size={16} /> Ver Registrados
-            </button>
-            <button onClick={() => setModalProveedor(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: 14, color: "#15803d", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
-              <UserPlus size={16} /> Agregar Persona
-            </button>
-            <button onClick={() => setModalFirma(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 14, color: "#1d4ed8", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
-              <PenTool size={16} /> Subir Firma
-            </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setModalLista(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", background: "#f8fafc", border: "1.5px solid #e2e8f0", borderRadius: 14, color: "#475569", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
+                <Users size={16} /> Ver Registrados
+              </button>
+              <button onClick={() => setModalProveedor(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: 14, color: "#15803d", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
+                <UserPlus size={16} /> Agregar Persona
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setModalGestionFirmas(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: 14, color: "#dc2626", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
+                <ImageIcon size={16} /> Gestionar Firmas
+              </button>
+              <button onClick={() => { setNuevoFirmaNombre(""); setNuevoFirmaArchivo(null); setModalFirma(true); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 14, color: "#1d4ed8", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
+                <PenTool size={16} /> Subir Firma
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} style={{ background: "#fff", padding: 28, borderRadius: 24, boxShadow: "0 10px 40px rgba(0,0,0,0.03)", border: "1px solid #f1f5f9", display: "flex", flexDirection: "column", gap: 20 }}>
@@ -382,6 +500,49 @@ export default function GenerarCuentaCobroPage() {
         </motion.div>
       </main>
 
+      {/* MODAL GESTIONAR FIRMAS */}
+      <AnimatePresence>
+        {modalGestionFirmas && (
+          <motion.div style={modalOverlay} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setModalGestionFirmas(false)}>
+            <motion.div style={{...modalBox, maxWidth: 540}} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => setModalGestionFirmas(false)} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}><X size={20} /></button>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                <div style={{ width: 40, height: 40, background: "#fef2f2", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ImageIcon size={20} style={{ color: "#dc2626" }} />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Firmas en la Nube</h2>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>{firmasCloud.length} firmas disponibles</p>
+                </div>
+              </div>
+              <div style={{ maxHeight: 400, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingRight: 8, flex: 1 }}>
+                {firmasCloud.map((f, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ width: 60, height: 40, background: "#fff", borderRadius: 8, border: "1px solid #cbd5e1", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <img src={f.url} alt={f.nombre} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+                      </div>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{f.nombre}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button disabled={procesandoAccion} onClick={() => handleReemplazarFirma(f.nombre)} style={{ background: "#eff6ff", color: "#3b82f6", border: "none", borderRadius: 8, padding: "8px", cursor: "pointer", display: "flex" }} title="Reemplazar Firma">
+                        <Edit2 size={14} />
+                      </button>
+                      <button disabled={procesandoAccion} onClick={() => handleEliminarFirmaCloud(f.nombre)} style={{ background: "#fef2f2", color: "#ef4444", border: "none", borderRadius: 8, padding: "8px", cursor: "pointer", display: "flex" }} title="Eliminar Firma">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {firmasCloud.length === 0 && (
+                  <p style={{ textAlign: "center", color: "#64748b", fontSize: 14, marginTop: 20 }}>No hay firmas en la nube aún.</p>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* MODAL SUBIR FIRMA */}
       <AnimatePresence>
         {modalFirma && (
@@ -392,7 +553,7 @@ export default function GenerarCuentaCobroPage() {
                 <div style={{ width: 40, height: 40, background: "#eff6ff", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <PenTool size={20} style={{ color: "#3b82f6" }} />
                 </div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Subir Firma a la Nube</h2>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Subir / Reemplazar Firma</h2>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -403,16 +564,48 @@ export default function GenerarCuentaCobroPage() {
                   <label style={{ fontSize: 13, fontWeight: 700, color: "#475569" }}>Imagen de la firma *</label>
                   <div style={{ border: "2px dashed #cbd5e1", borderRadius: 14, padding: 20, textAlign: "center" as const, background: nuevoFirmaArchivo ? "#dcfce7" : "#f8fafc", cursor: "pointer", position: "relative" as const }}>
                     <input type="file" accept="image/png, image/jpeg, image/jpg"
-                      onChange={(e) => { if (e.target.files && e.target.files.length > 0) setNuevoFirmaArchivo(e.target.files[0]); }}
+                      onChange={onSelectFileParaRecorte}
                       style={{ position: "absolute" as const, inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
                     <UploadCloud size={24} style={{ color: nuevoFirmaArchivo ? "#22c55e" : "#94a3b8", margin: "0 auto 6px" }} />
                     <p style={{ margin: 0, fontSize: 13, color: nuevoFirmaArchivo ? "#15803d" : "#64748b", fontWeight: nuevoFirmaArchivo ? 700 : 400 }}>
-                      {nuevoFirmaArchivo ? nuevoFirmaArchivo.name : "Selecciona PNG o JPG"}
+                      {nuevoFirmaArchivo ? nuevoFirmaArchivo.name + " (Recortada/Lista)" : "Selecciona PNG o JPG para recortar"}
                     </p>
                   </div>
                 </div>
                 <button onClick={handleSubirFirma} disabled={subiendoFirma} style={{ marginTop: 6, background: subiendoFirma ? "#93c5fd" : "#3b82f6", color: "#fff", border: "none", borderRadius: 12, padding: "12px 20px", fontSize: 14, fontWeight: 800, cursor: subiendoFirma ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "inherit" }}>
                   {subiendoFirma ? (<><Loader2 size={16} className="animate-spin" /> Subiendo...</>) : (<><UploadCloud size={16} /> Subir Firma</>)}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL RECORTE DE FIRMA */}
+      <AnimatePresence>
+        {modalRecorte && upImg && (
+          <motion.div style={{...modalOverlay, zIndex: 110}} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div style={{...modalBox, maxWidth: 600}} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                <div style={{ width: 40, height: 40, background: "#fef9c3", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <CropIcon size={20} style={{ color: "#ca8a04" }} />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Recortar Firma</h2>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>Arrastra para enmarcar únicamente la firma</p>
+                </div>
+              </div>
+              <div style={{ background: "#f1f5f9", borderRadius: 12, overflow: "hidden", display: "flex", justifyContent: "center", alignItems: "center", maxHeight: 400 }}>
+                <ReactCrop crop={crop} onChange={(_, percentCrop) => setCrop(percentCrop)} onComplete={(c) => setCompletedCrop(c)}>
+                  <img ref={imgRef} src={upImg} alt="Crop me" style={{ maxHeight: 400, objectFit: "contain" }} />
+                </ReactCrop>
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                <button onClick={handleCancelarRecorte} style={{ flex: 1, padding: "12px", background: "#f8fafc", border: "1.5px solid #e2e8f0", borderRadius: 12, color: "#475569", fontWeight: 700, cursor: "pointer" }}>
+                  Cancelar
+                </button>
+                <button onClick={handleAceptarRecorte} style={{ flex: 1, padding: "12px", background: "#22c55e", border: "none", borderRadius: 12, color: "#fff", fontWeight: 700, cursor: "pointer" }}>
+                  Aplicar Recorte
                 </button>
               </div>
             </motion.div>
@@ -465,7 +658,7 @@ export default function GenerarCuentaCobroPage() {
                   <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>{proveedores.length} personas en la base de datos</p>
                 </div>
               </div>
-              <div style={{ maxHeight: 400, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingRight: 8 }}>
+              <div style={{ maxHeight: 400, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingRight: 8, flex: 1 }}>
                 {proveedores.map((p, i) => (
                   <div key={i} style={{ padding: "12px 16px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
                     {editandoId === p.id && p.id ? (
