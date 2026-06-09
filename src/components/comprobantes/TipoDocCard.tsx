@@ -49,6 +49,7 @@ export function TipoDocCard({
   const [renombrandoId, setRenombrandoId] = useState<string | null>(null);
   const [nuevoNombreText, setNuevoNombreText] = useState("");
   const [extraUploadActivo, setExtraUploadActivo] = useState<{ [grupoId: string]: boolean }>({});
+  const [numeroSiguiente, setNumeroSiguiente] = useState<string>("");
 
   const tiene = archivos.length > 0;
 
@@ -102,6 +103,40 @@ export function TipoDocCard({
     });
   }
 
+  const extraerNumero = (grupo: GrupoPareja) => {
+    let numStr: number | null = null;
+    let fallback: number | null = null;
+    const posibles = [grupo.nombre, ...grupo.archivos.map(a => a.nombre)];
+    for (const r of posibles) {
+      const t = r.replace(new RegExp(tipo.id, 'gi'), '');
+      if (t.startsWith("Pareja ")) {
+         const m = t.match(/\d+/);
+         if (m && fallback === null) fallback = parseInt(m[0], 10);
+         continue;
+      }
+      const m = t.match(/\d+/);
+      if (m) {
+         numStr = parseInt(m[0], 10);
+         break;
+      }
+    }
+    return numStr !== null ? numStr : (fallback !== null ? fallback : 999999);
+  };
+
+  // Ordenar visualmente los grupos por número extraído
+  if (esPorParejas) {
+    todosGrupos.sort((a, b) => extraerNumero(a) - extraerNumero(b));
+  }
+
+  // Calcular el número sugerido
+  let proximoRecomendado = 1;
+  if (esPorParejas) {
+    const todosNumeros = todosGrupos.map(extraerNumero).filter((n) => n !== 999999);
+    if (todosNumeros.length > 0) {
+      proximoRecomendado = Math.max(...todosNumeros) + 1;
+    }
+  }
+
   // ── 2. ALERTAS DEL HEADER CARD ────────────────────────────────────────────────────
   let faltaParejaCritico = false;
   let faltaParejaAdvertencia = false;
@@ -116,8 +151,17 @@ export function TipoDocCard({
 
   // ── 3. ACCIONES DE GRUPOS ──────────────────────────────────────────────────────────
   const handleCrearGrupo = () => {
+    let numFinal = proximoRecomendado;
+    if (numeroSiguiente !== "") {
+      const userNum = parseInt(numeroSiguiente, 10);
+      if (!isNaN(userNum)) {
+        numFinal = userNum;
+        setNumeroSiguiente((userNum + 1).toString());
+      }
+    }
+
     const nuevoId = `grupo_${Date.now()}`;
-    const nuevoNombre = `Pareja ${todosGrupos.length + 1}`;
+    const nuevoNombre = `Pareja ${numFinal}`;
     setGruposVacios((prev) => [...prev, { id: nuevoId, nombre: nuevoNombre }]);
   };
 
@@ -349,15 +393,24 @@ export function TipoDocCard({
 
                   // Extraer el número consecutivo de esta pareja
                   let numGrupo: number | null = null;
+                  let fallbackNum: number | null = null;
                   const posiblesTextos = [grupo.nombre, ...grupo.archivos.map(a => a.nombre)];
                   for (const rawTexto of posiblesTextos) {
                     const texto = rawTexto.replace(new RegExp(tipo.id, 'gi'), '');
-                    if (texto.startsWith("Pareja ")) continue;
+                    if (texto.startsWith("Pareja ")) {
+                       const m = texto.match(/\d+/);
+                       if (m && fallbackNum === null) fallbackNum = parseInt(m[0], 10);
+                       continue;
+                    }
                     const match = texto.match(/\d+/);
                     if (match) {
                       numGrupo = parseInt(match[0], 10);
                       break;
                     }
+                  }
+                  
+                  if (numGrupo === null && fallbackNum !== null) {
+                    numGrupo = fallbackNum;
                   }
 
                   const esRepetido = numGrupo !== null && alertaConsecutivo?.repetidos.includes(numGrupo);
@@ -533,7 +586,13 @@ export function TipoDocCard({
                         >
                           <AlertCircle size={13} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
                           <div>
-                            <strong>Salto de secuencia:</strong> Faltan los consecutivos <strong>{faltanAntes.join(", ")}</strong> antes de este archivo.
+                            <strong>Salto de secuencia:</strong> Faltan los consecutivos{" "}
+                            <strong>
+                              {faltanAntes.length > 7
+                                ? `${faltanAntes[0]} al ${faltanAntes[faltanAntes.length - 1]} (${faltanAntes.length} números faltantes)`
+                                : faltanAntes.join(", ")}
+                            </strong>{" "}
+                            antes de este archivo.
                           </div>
                         </div>
                       )}
@@ -647,30 +706,61 @@ export function TipoDocCard({
                 })}
               </div>
 
-              {/* Botón para iniciar una nueva pareja */}
-              <button
-                onClick={handleCrearGrupo}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  background: `${tipo.color}15`,
-                  color: tipo.color,
-                  border: `1.5px dashed ${tipo.color}35`,
-                  borderRadius: 10,
-                  padding: "8px 16px",
-                  cursor: "pointer",
-                  fontWeight: 800,
-                  fontSize: 11,
-                  fontFamily: "inherit",
-                  marginTop: 14,
-                  width: "100%",
-                  justifyContent: "center",
-                  transition: "all 0.2s",
-                }}
-              >
-                <Plus size={14} /> Iniciar Nueva Pareja de Documentos
-              </button>
+              {/* Botón para iniciar una nueva pareja y Campo para número inicial */}
+              <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    background: `${tipo.color}10`,
+                    border: `1.5px solid ${tipo.color}35`,
+                    borderRadius: 10,
+                    padding: "0 10px",
+                  }}
+                  title="Escribe el número inicial aquí. Se auto incrementará con cada pareja que crees."
+                >
+                  <span style={{ fontSize: 10, fontWeight: 800, color: tipo.color, marginRight: 6 }}>
+                    Num Inicial:
+                  </span>
+                  <input
+                    type="number"
+                    value={numeroSiguiente}
+                    onChange={(e) => setNumeroSiguiente(e.target.value)}
+                    placeholder={proximoRecomendado.toString()}
+                    style={{
+                      width: 50,
+                      border: "none",
+                      background: "transparent",
+                      fontSize: 12,
+                      fontWeight: 800,
+                      color: "#334155",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={handleCrearGrupo}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    background: `${tipo.color}15`,
+                    color: tipo.color,
+                    border: `1.5px dashed ${tipo.color}35`,
+                    borderRadius: 10,
+                    padding: "8px 16px",
+                    cursor: "pointer",
+                    fontWeight: 800,
+                    fontSize: 11,
+                    fontFamily: "inherit",
+                    flex: 1,
+                    justifyContent: "center",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  <Plus size={14} /> Iniciar Nueva Pareja de Documentos
+                </button>
+              </div>
             </div>
           ) : (
             // ── RENDERING PLANO (FV, CC-1...) ───────────────────────────────────────

@@ -77,6 +77,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Buscar firma
+    let firmaUrl: string | null = null;
+    try {
+      const originUrl = req.nextUrl.origin || "http://localhost:3000";
+      const firmRes = await fetch(`${originUrl}/api/buscar-firma?nombre=${encodeURIComponent(nombre)}`);
+      if (firmRes.ok) {
+         const data = await firmRes.json();
+         if (data.firmaUrl) firmaUrl = data.firmaUrl;
+      }
+    } catch (e) {
+      console.error("Error al autocompletar firma en generador auto:", e);
+    }
+
     // Extraer Valor (Buscamos "Total a Pagar" o "Total")
     let valor = 0;
     const totalPagarMatch = text.match(/Total a Pagar[\s\S]*?([\d,]+\.\d{2})/i);
@@ -192,16 +205,51 @@ export async function POST(req: NextRequest) {
     // Primero dibujamos la palabra "FIRMA"
     drawText("FIRMA", marginX, currentY, 11, true);
 
-    // Firma (comentada porque el usuario solo pide "FIRMA", pero la dejo condicional si prefieren la línea)
-    // page.drawLine({
-    //   start: { x: marginX, y: currentY },
-    //   end: { x: marginX + 200, y: currentY },
-    //   thickness: 1,
-    //   color: rgb(0, 0, 0),
-    // });
-    
-    // currentY -= 15;
-    // drawText(`C.C. / NIT: ${nit}`, marginX, currentY, 11, true);
+    let imageBuffer: ArrayBuffer | null = null;
+    let imageType = "";
+
+    if (firmaUrl) {
+      try {
+        const res = await fetch(firmaUrl);
+        if (res.ok) {
+          imageBuffer = await res.arrayBuffer();
+          const contentType = res.headers.get("content-type");
+          if (contentType) {
+             imageType = contentType;
+          } else {
+             if (firmaUrl.toLowerCase().includes(".png")) imageType = "image/png";
+             else imageType = "image/jpeg";
+          }
+        }
+      } catch (error) {
+        console.error("Error descargando firma de URL:", error);
+      }
+    }
+
+    if (imageBuffer) {
+      let imagePdf;
+      if (imageType.includes("png")) {
+        imagePdf = await pdfDoc.embedPng(imageBuffer);
+      } else if (imageType.includes("jpeg") || imageType.includes("jpg")) {
+        imagePdf = await pdfDoc.embedJpg(imageBuffer);
+      }
+      
+      if (imagePdf) {
+        const { width, height } = imagePdf.scale(1);
+        const ratio = height / width;
+        const targetWidth = 150; 
+        const targetHeight = targetWidth * ratio;
+
+        currentY -= (targetHeight + 5); 
+
+        page.drawImage(imagePdf, {
+          x: marginX,
+          y: currentY,
+          width: targetWidth,
+          height: targetHeight,
+        });
+      }
+    }
 
     const pdfBytes = await pdfDoc.save();
     const pdfBuffer = Buffer.from(pdfBytes);

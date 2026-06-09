@@ -99,6 +99,8 @@ export function analizarConsecutivos(periodo: Periodo): Record<string, AlertaCon
 
         Object.values(gruposMap).forEach((grupoArchivos) => {
           let num: number | null = null;
+          let numFallback: number | null = null;
+          
           // Buscamos el primer número en el nombre del grupo o en los nombres de los archivos
           const posiblesTextos = [
             grupoArchivos[0]?.grupoNombre || "",
@@ -109,10 +111,10 @@ export function analizarConsecutivos(periodo: Periodo): Record<string, AlertaCon
             // Ignorar el prefijo del tipo de documento (ej: "CC9") para no extraer el "9"
             const texto = rawTexto.replace(new RegExp(tipo.id, 'gi'), '');
 
-            // Ignoramos el texto por defecto "Pareja X" si solo queremos números reales
+            // Si es Pareja X, lo guardamos como fallback para no pisar números reales de las facturas
             if (texto.startsWith("Pareja ")) {
-              // Si el usuario no renombró la pareja y solo es "Pareja 1", no lo tomamos como número consecutivo real
-              // a menos que sea el único texto disponible (mejor buscar en los archivos primero)
+              const m = texto.match(/\d+/);
+              if (m && numFallback === null) numFallback = parseInt(m[0], 10);
               continue;
             }
             const match = texto.match(/\d+/);
@@ -120,6 +122,10 @@ export function analizarConsecutivos(periodo: Periodo): Record<string, AlertaCon
               num = parseInt(match[0], 10);
               break; // Encontramos un número válido en este grupo
             }
+          }
+
+          if (num === null && numFallback !== null) {
+            num = numFallback;
           }
 
 
