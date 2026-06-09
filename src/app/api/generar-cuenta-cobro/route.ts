@@ -78,16 +78,19 @@ export async function POST(req: NextRequest) {
     }
 
     // Buscar firma
-    let firmaUrl: string | null = null;
-    try {
-      const originUrl = req.nextUrl.origin || "http://localhost:3000";
-      const firmRes = await fetch(`${originUrl}/api/buscar-firma?nombre=${encodeURIComponent(nombre)}`);
-      if (firmRes.ok) {
-         const data = await firmRes.json();
-         if (data.firmaUrl) firmaUrl = data.firmaUrl;
+    let firmaUrl: string | null = formData.get("firmaUrl") as string | null;
+    
+    if (!firmaUrl) {
+      try {
+        const originUrl = req.nextUrl.origin || "http://localhost:3000";
+        const firmRes = await fetch(`${originUrl}/api/buscar-firma?nombre=${encodeURIComponent(nombre)}`);
+        if (firmRes.ok) {
+           const data = await firmRes.json();
+           if (data.firmaUrl) firmaUrl = data.firmaUrl;
+        }
+      } catch (e) {
+        console.error("Error al autocompletar firma en generador auto:", e);
       }
-    } catch (e) {
-      console.error("Error al autocompletar firma en generador auto:", e);
     }
 
     // Extraer Valor (Buscamos "Total a Pagar" o "Total")

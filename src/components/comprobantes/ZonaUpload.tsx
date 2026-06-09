@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, FileText, Image as ImageIcon, Eye, Trash2, Download, FileSpreadsheet, Wand2 } from "lucide-react";
+import { Upload, FileText, Image as ImageIcon, Eye, Trash2, Download, FileSpreadsheet, Wand2, X, Search } from "lucide-react";
 import type { ArchivoSubido, TipoDocumento } from "@/types";
 import { uid, formatKb, obtenerUrlDescargaCloudinary } from "@/lib/utils";
 import { subirACloudinary } from "@/lib/cloudinary";
@@ -32,6 +32,42 @@ export function ZonaUpload({
   const inputRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const [cargando, setCargando] = useState(false);
+
+  // Estados para Modal de Firma Auto
+  const [modalFirmaAuto, setModalFirmaAuto] = useState<ArchivoSubido | null>(null);
+  const [firmasCloud, setFirmasCloud] = useState<{nombre: string, url: string}[]>([]);
+  const [busquedaFirma, setBusquedaFirma] = useState("");
+  const [sugerenciasFirma, setSugerenciasFirma] = useState<{nombre: string, url: string}[]>([]);
+  const [cargandoFirmas, setCargandoFirmas] = useState(false);
+
+  const abrirModalAutocompletar = async (arch: ArchivoSubido) => {
+    setModalFirmaAuto(arch);
+    setBusquedaFirma("");
+    setSugerenciasFirma([]);
+    setCargandoFirmas(true);
+    try {
+      const res = await fetch("/api/listar-firmas");
+      if (res.ok) {
+        const data = await res.json();
+        setFirmasCloud(data.firmas || []);
+      }
+    } catch (error) {
+       console.error(error);
+    }
+    setCargandoFirmas(false);
+  };
+
+  const handleBsFirma = (val: string) => {
+    setBusquedaFirma(val);
+    if (val.length >= 1) {
+      const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      const nVal = normalize(val);
+      const filtradas = firmasCloud.filter(f => normalize(f.nombre).includes(nVal));
+      setSugerenciasFirma(filtradas);
+    } else {
+      setSugerenciasFirma([]);
+    }
+  };
 
   const procesarArchivos = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -68,7 +104,8 @@ export function ZonaUpload({
     setCargando(false);
   };
 
-  const generarCuentaCobro = async (arch: ArchivoSubido) => {
+  const generarCuentaCobro = async (arch: ArchivoSubido, firmaUrlManual?: string) => {
+    setModalFirmaAuto(null);
     const toastId = toast.loading("Generando Cuenta de Cobro...");
     try {
       // 1. Descargar el PDF desde Cloudinary
@@ -78,6 +115,7 @@ export function ZonaUpload({
       // 2. Enviar al API
       const formData = new FormData();
       formData.append("file", blob, arch.nombre);
+      if (firmaUrlManual) formData.append("firmaUrl", firmaUrlManual);
       
       const resApi = await fetch("/api/generar-cuenta-cobro", {
         method: "POST",
@@ -212,7 +250,7 @@ export function ZonaUpload({
               </a>
               {tipoDoc.id === "DS" && arch.tipo === "application/pdf" && (
                 <button
-                  onClick={() => generarCuentaCobro(arch)}
+                  onClick={() => abrirModalAutocompletar(arch)}
                   title="Generar Cuenta de Cobro (PDF) y adjuntar a pareja"
                   style={{
                     background: "#10b981",
@@ -303,6 +341,52 @@ export function ZonaUpload({
             onChange={(e) => procesarArchivos(e.target.files)}
           />
         </motion.div>
+      )}
+      {/* Modal de Opciones de Autocompletado */}
+      {modalFirmaAuto && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setModalFirmaAuto(null)}>
+          <div style={{ background: "#fff", padding: 24, borderRadius: 16, width: "100%", maxWidth: 400, position: "relative" }} onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setModalFirmaAuto(null)} style={{ position: "absolute", top: 12, right: 12, background: "none", border: "none", cursor: "pointer", color: "#64748b" }}><X size={20}/></button>
+            
+            <h3 style={{ margin: "0 0 16px 0", fontSize: 16, color: "#0f172a", display: "flex", alignItems: "center", gap: 6 }}>
+               <Wand2 size={18} style={{color: "#3b82f6"}}/> Opciones de Autocompletado
+            </h3>
+            
+            <p style={{ fontSize: 13, color: "#475569", marginBottom: 12 }}>
+              Al generar esta cuenta, el sistema intentará detectar el proveedor y usar su firma automáticamente.
+              Si prefieres forzar una firma tú mismo, búscala a continuación:
+            </p>
+            
+            <div style={{ position: "relative", marginBottom: 20 }}>
+               <input 
+                 type="text" 
+                 value={busquedaFirma} 
+                 onChange={e => handleBsFirma(e.target.value)} 
+                 placeholder={cargandoFirmas ? "Cargando firmas..." : "Buscar firma en la nube..."}
+                 disabled={cargandoFirmas}
+                 style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #cbd5e1", borderRadius: 8, boxSizing: "border-box", fontSize: 13, fontFamily: "inherit" }}
+               />
+               <Search size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
+               
+               {sugerenciasFirma.length > 0 && (
+                 <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #e2e8f0", zIndex: 10, maxHeight: 150, overflowY: "auto", borderRadius: 8, marginTop: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                    {sugerenciasFirma.map((s,i) => (
+                       <div key={i} onClick={() => generarCuentaCobro(modalFirmaAuto, s.url)} style={{ padding: "8px 12px", cursor: "pointer", fontSize: 13, borderBottom: i < sugerenciasFirma.length - 1 ? "1px solid #f1f5f9" : "none", display: "flex", alignItems: "center", gap: 8, color: "#0f172a" }} onMouseEnter={e => e.currentTarget.style.background = "#eff6ff"} onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+                         <div style={{ width: 24, height: 16, background: "#f8fafc", borderRadius: 4, border: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                           <img src={s.url} alt="Firma" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+                         </div>
+                         {s.nombre}
+                       </div>
+                    ))}
+                 </div>
+               )}
+            </div>
+            
+            <button onClick={() => generarCuentaCobro(modalFirmaAuto)} style={{ width: "100%", padding: 12, background: "#22c55e", color: "white", border: "none", borderRadius: 8, fontWeight: 800, cursor: "pointer", fontSize: 14 }}>
+              Dejar que busque automáticamente
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
