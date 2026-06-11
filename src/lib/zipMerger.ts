@@ -107,21 +107,38 @@ export async function descargarPeriodoZip(periodo: Periodo) {
       for (const [tipoId, archivos] of Object.entries(lote.documentos)) {
         if (archivos.length === 0) continue;
 
+        // Encontrar la configuración del tipo para saber su categoría y nombre
+        const configTipo = TIPOS_DOCUMENTO.find(t => t.id === tipoId);
+        const categoria = configTipo?.categoria || "otros";
+        
         // Creamos la carpeta del proveedor si aún no se ha creado
         if (!folderProveedor) {
           folderProveedor = zip.folder(carpetaProveedor);
         }
-
         if (!folderProveedor) continue;
 
-        // Creamos una subcarpeta para el tipo de documento (CC9, DS, etc.)
-        const folderTipo = folderProveedor.folder(tipoId);
+        // --- SISTEMA DE CARPETAS POR CATEGORÍA ---
+        let folderDestino: JSZip = folderProveedor;
+
+        if (categoria === "comprobantes") {
+          folderDestino = folderProveedor.folder("Comprobantes") || folderProveedor;
+        } else if (categoria === "bancos" || categoria === "caja") {
+          const rootConcil = folderProveedor.folder("CONCILIACIONES") || folderProveedor;
+          folderDestino = rootConcil.folder(categoria.toUpperCase()) || rootConcil;
+        } else {
+          folderDestino = folderProveedor.folder("Otros") || folderProveedor;
+        }
+
+        // Creamos la subcarpeta final para el tipo de documento (usando su label legible)
+        const nombreFinalCarpeta = configTipo ? configTipo.label.replace(/[\\/:*?"<>|]/g, '_') : tipoId;
+        const folderTipo = folderDestino.folder(nombreFinalCarpeta);
         if (!folderTipo) continue;
 
-        const esPorParejas = tipoId === "CC9" || tipoId === "DS" || tipoId === "CC6" || tipoId === "CC10";
+        // Determinamos si este tipo usa lógica de grupos (Parejas/Tríos)
+        const esPorGrupos = typeof configTipo?.minArchivos === "number" && configTipo.minArchivos >= 1 && tipoId !== "CC1" && tipoId !== "FV";
 
-        if (esPorParejas) {
-          // Agrupar por grupoId para procesar cada pareja por separado
+        if (esPorGrupos) {
+          // Agrupar por grupoId para procesar cada conjunto por separado
           const gruposMap: { [grupoId: string]: ArchivoSubido[] } = {};
           const archivosSinGrupo: ArchivoSubido[] = [];
 
@@ -136,7 +153,7 @@ export async function descargarPeriodoZip(periodo: Periodo) {
             }
           });
 
-          // Poner archivos sin grupo en el grupo inicial (Pareja 1)
+          // Poner archivos sin grupo en el grupo inicial
           if (archivosSinGrupo.length > 0) {
             const idInicial = "grupo_inicial";
             if (!gruposMap[idInicial]) {
@@ -145,11 +162,11 @@ export async function descargarPeriodoZip(periodo: Periodo) {
             gruposMap[idInicial].push(...archivosSinGrupo);
           }
 
-          // Procesar cada pareja/grupo de forma independiente
+          // Procesar cada pareja/trío de forma independiente
           for (const [grupoId, archivosGrupo] of Object.entries(gruposMap)) {
             if (archivosGrupo.length === 0) continue;
 
-            const nombreGrupo = archivosGrupo[0]?.grupoNombre || (grupoId === "grupo_inicial" ? "Pareja 1" : "Pareja");
+            const nombreGrupo = archivosGrupo[0]?.grupoNombre || (grupoId === "grupo_inicial" ? "Grupo 1" : "Grupo");
             const grupoLimpio = nombreGrupo.replace(/[\\/:*?"<>|]/g, '_');
 
             // Clasificar archivos en combinables (PDFs, JPGs, PNGs) y no combinables
@@ -158,7 +175,7 @@ export async function descargarPeriodoZip(periodo: Periodo) {
 
             for (const arch of archivosGrupo) {
               const lowerNombre = arch.nombre.toLowerCase();
-              const tipoMime = arch.tipo.toLowerCase();
+              const tipoMime = (arch.tipo || "").toLowerCase();
               const esPDF = tipoMime === 'application/pdf' || lowerNombre.endsWith('.pdf');
               const esJPG = tipoMime === 'image/jpeg' || tipoMime === 'image/jpg' || lowerNombre.endsWith('.jpg') || lowerNombre.endsWith('.jpeg');
               const esPNG = tipoMime === 'image/png' || lowerNombre.endsWith('.png');
@@ -172,21 +189,21 @@ export async function descargarPeriodoZip(periodo: Periodo) {
 
             let fusionExitosa = false;
 
-            // Intentamos fusionar la pareja en un único PDF
+            // Intentamos fusionar el grupo en un único PDF
             if (combinables.length > 0) {
               try {
-                toast.loading(`Combinando ${tipoId} (${nombreGrupo}) de ${lote.proveedor}...`, { id: toastId });
+                toast.loading(`Combinando ${nombreFinalCarpeta} (${nombreGrupo})...`, { id: toastId });
                 const pdfBytes = await fusionarArchivosAPdf(combinables);
                 
                 if (pdfBytes) {
-                  // Nombre legible para el PDF de la pareja combinada: e.g. CC9_Pareja_1.pdf
-                  const nombrePdfCombinado = `${tipoId}_${grupoLimpio}.pdf`;
+                  // Nombre legible para el PDF combinado: e.g. CONCILIACION_Grupo_1.pdf
+                  const nombrePdfCombinado = `${nombreFinalCarpeta}_${grupoLimpio}.pdf`;
                   folderTipo.file(nombrePdfCombinado, pdfBytes);
                   totalArchivos++;
                   fusionExitosa = true;
                 }
               } catch (err) {
-                console.warn(`No se pudo realizar la fusión para el grupo ${nombreGrupo} (${tipoId}) de ${lote.proveedor}. Se descargarán individualmente.`, err);
+                console.warn(`No se pudo realizar la fusión para el grupo ${nombreGrupo}.`, err);
               }
             }
 
@@ -198,42 +215,40 @@ export async function descargarPeriodoZip(periodo: Periodo) {
                   if (!response.ok) throw new Error(`No se pudo obtener: ${arch.nombre}`);
                   const arrayBuffer = await response.arrayBuffer();
                   const nombreLimpio = arch.nombre.replace(/[\\/:*?"<>|]/g, '_');
-                  // Agregamos el nombre del grupo/pareja para evitar colisiones y mantener organización
-                  folderTipo.file(`${tipoId}_${grupoLimpio}_${nombreLimpio}`, arrayBuffer);
+                  folderTipo.file(`${nombreFinalCarpeta}_${grupoLimpio}_${nombreLimpio}`, arrayBuffer);
                   totalArchivos++;
                 } catch (e) {
-                  console.error(`Error al empaquetar de forma individual ${arch.nombre}:`, e);
+                  console.error(`Error individual ${arch.nombre}:`, e);
                 }
               }
             }
 
-            // Descargar todos los archivos no combinables de este grupo (Excel, etc.)
+            // Guardar archivos no combinables (Excel, etc.)
             for (const arch of noCombinables) {
               try {
                 const response = await fetch(arch.url);
                 if (!response.ok) throw new Error(`No se pudo obtener: ${arch.nombre}`);
                 const arrayBuffer = await response.arrayBuffer();
                 const nombreLimpio = arch.nombre.replace(/[\\/:*?"<>|]/g, '_');
-                folderTipo.file(`${tipoId}_${grupoLimpio}_${nombreLimpio}`, arrayBuffer);
+                folderTipo.file(`${nombreFinalCarpeta}_${grupoLimpio}_${nombreLimpio}`, arrayBuffer);
                 totalArchivos++;
               } catch (e) {
-                console.error(`Error al empaquetar archivo no combinable ${arch.nombre}:`, e);
+                console.error(`Error no combinable ${arch.nombre}:`, e);
               }
             }
           }
         } else {
-          // No es un tipo de documento con estructura de parejas (por ejemplo FV o CC1).
-          // Simplemente descargamos y colocamos todos los archivos de manera individual.
+          // Documentos individuales (sin lógica de grupos)
           for (const arch of archivos) {
             try {
               const response = await fetch(arch.url);
               if (!response.ok) throw new Error(`No se pudo obtener: ${arch.nombre}`);
               const arrayBuffer = await response.arrayBuffer();
               const nombreLimpio = arch.nombre.replace(/[\\/:*?"<>|]/g, '_');
-              folderTipo.file(`${tipoId}_${nombreLimpio}`, arrayBuffer);
+              folderTipo.file(`${nombreFinalCarpeta}_${nombreLimpio}`, arrayBuffer);
               totalArchivos++;
             } catch (e) {
-              console.error(`Error al empaquetar archivo individual ${arch.nombre}:`, e);
+              console.error(`Error individual ${arch.nombre}:`, e);
             }
           }
         }

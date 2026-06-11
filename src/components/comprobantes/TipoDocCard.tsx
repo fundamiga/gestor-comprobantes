@@ -1,7 +1,7 @@
 "use client";
 // Force Vercel redeploy - Triggering 10:55 AM
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, Fragment } from "react";
 import {
   FileText,
   CheckCircle,
@@ -77,8 +77,9 @@ export function TipoDocCard({
 
   const tiene = archivos.length > 0;
 
-  // ── 1. AGRUPAR ARCHIVOS SI EL TIPO EXIGE PAREJAS (minArchivos === 2) ────────────────
-  const esPorParejas = tipo.minArchivos === 2;
+  // ── 1. AGRUPAR ARCHIVOS SI EL TIPO EXIGE GRUPOS (minArchivos >= 1) ────────────────
+  const esPorGrupos = typeof tipo.minArchivos === "number" && tipo.minArchivos >= 1;
+  const esPorParejas = esPorGrupos; // Alias para compatibilidad con el resto del código
 
   // Agrupar archivos reales
   const gruposMap: { [grupoId: string]: ArchivoSubido[] } = {};
@@ -505,9 +506,9 @@ export function TipoDocCard({
           }}
         >
           
-          {esPorParejas ? (
-            // ── RENDERING POR PAREJAS (GRUPOS) ──────────────────────────────────────
-            <div>
+          {tipo.minArchivos && tipo.minArchivos >= 1 ? (
+            // ── RENDERING POR GRUPOS/PAREJAS ─────────────────────────────────────────
+            <div style={{ display: "flex", flexDirection: "column" }}>
               {guardadoOk && (
                 <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
                   <span style={{
@@ -667,7 +668,7 @@ export function TipoDocCard({
                   }
 
                   return (
-                    <>
+                    <Fragment key={grupo.id}>
                       <Reorder.Item
                         key={grupo.id}
                         value={grupo.id}
@@ -747,7 +748,7 @@ export function TipoDocCard({
                               </div>
                             ) : (
                               <>
-                                <strong style={{ fontSize: 13, color: "#334155" }}>
+                        <strong style={{ fontSize: 13, color: "#334155" }}>
                                   {grupo.nombre}
                                 </strong>
                                 <button
@@ -916,12 +917,12 @@ export function TipoDocCard({
                             onVer={onVer}
                             grupoId={grupo.id}
                             grupoNombre={grupo.nombre}
-                            ocultarDropzone={count >= 2 && !uploadExtra}
+                            ocultarDropzone={count >= (tipo.minArchivos || 2) && !uploadExtra}
                           />
                         </div>
 
                         {/* Botón para forzar más archivos (Trio/Cuarteto) */}
-                        {count >= 2 && (
+                        {count >= (tipo.minArchivos || 2) && (
                           <div style={{ display: "flex", justifyContent: "flex-end" }}>
                             <button
                               onClick={() =>
@@ -978,7 +979,7 @@ export function TipoDocCard({
                           <Plus size={12} />
                         </button>
                       </div>
-                    </>
+                    </Fragment>
                   );
                 })}
               </Reorder.Group>

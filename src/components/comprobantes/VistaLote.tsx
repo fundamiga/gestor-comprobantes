@@ -388,21 +388,108 @@ export function VistaLote({
           </p>
         </div>
 
-        {/* Cards de tipos de documento */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {TIPOS_DOCUMENTO.map((tipo) => (
-            <TipoDocCard
-              key={tipo.id}
-              tipo={tipo}
-              archivos={lote.documentos[tipo.id] ?? []}
-              onAgregar={(arch) => onAgregarArchivo(tipo.id, arch)}
-              onEliminar={(id) => onEliminarArchivo(tipo.id, id)}
-              onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
-              onVer={setVisorArchivo}
-              nombreProveedor={lote.proveedor}
-              alertaConsecutivo={alertasConsecutivos[tipo.id]}
-            />
-          ))}
+        {/* Cards de tipos de documento agrupadas por categoría */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          
+          {/* SECCIÓN COMPROBANTES */}
+          <div>
+            <h3 style={{ fontSize: 13, fontWeight: 900, color: "#475569", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+               Comprobantes Contables
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {TIPOS_DOCUMENTO.filter(t => t.categoria === "comprobantes").map((tipo) => (
+                <TipoDocCard
+                  key={tipo.id}
+                  tipo={tipo}
+                  archivos={lote.documentos[tipo.id] ?? []}
+                  onAgregar={(arch) => onAgregarArchivo(tipo.id, arch)}
+                  onEliminar={(id) => onEliminarArchivo(tipo.id, id)}
+                  onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
+                  onVer={setVisorArchivo}
+                  nombreProveedor={lote.proveedor}
+                  alertaConsecutivo={alertasConsecutivos[tipo.id]}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* SECCIÓN CONCILIACIONES */}
+          <div style={{ background: "#f8fafc", padding: "20px", borderRadius: 20, border: "2px solid #e2e8f0" }}>
+            <h3 style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", marginBottom: 18, display: "flex", alignItems: "center", gap: 8 }}>
+               <CheckCircle2 size={18} style={{ color: "#0d9488" }} /> CONCILIACIONES
+            </h3>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* SUB-SECCIÓN BANCOS */}
+              <div>
+                <h4 style={{ fontSize: 11, fontWeight: 900, color: "#0d9488", marginBottom: 8, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#0d9488" }} /> BANCOS
+                </h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {TIPOS_DOCUMENTO.filter(t => t.categoria === "bancos").map((tipo) => (
+                    <TipoDocCard
+                      key={tipo.id}
+                      tipo={tipo}
+                      archivos={lote.documentos[tipo.id] ?? []}
+                      onAgregar={(arch) => onAgregarArchivo(tipo.id, arch)}
+                      onEliminar={(id) => onEliminarArchivo(tipo.id, id)}
+                      onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
+                      onVer={setVisorArchivo}
+                      nombreProveedor={lote.proveedor}
+                      alertaConsecutivo={alertasConsecutivos[tipo.id]}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* SUB-SECCIÓN CAJA */}
+              <div>
+                <h4 style={{ fontSize: 11, fontWeight: 900, color: "#65a30d", marginBottom: 8, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#65a30d" }} /> CAJA
+                </h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {TIPOS_DOCUMENTO.filter(t => t.categoria === "caja").map((tipo) => (
+                    <TipoDocCard
+                      key={tipo.id}
+                      tipo={tipo}
+                      archivos={lote.documentos[tipo.id] ?? []}
+                      onAgregar={(arch) => onAgregarArchivo(tipo.id, arch)}
+                      onEliminar={(id) => onEliminarArchivo(tipo.id, id)}
+                      onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
+                      onVer={setVisorArchivo}
+                      nombreProveedor={lote.proveedor}
+                      alertaConsecutivo={alertasConsecutivos[tipo.id]}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECCIÓN OTROS */}
+          {TIPOS_DOCUMENTO.some(t => t.categoria === "otros") && (
+            <div>
+              <h3 style={{ fontSize: 13, fontWeight: 900, color: "#64748b", marginBottom: 10 }}>
+                 Otros Documentos
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {TIPOS_DOCUMENTO.filter(t => t.categoria === "otros").map((tipo) => (
+                  <TipoDocCard
+                    key={tipo.id}
+                    tipo={tipo}
+                    archivos={lote.documentos[tipo.id] ?? []}
+                    onAgregar={(arch) => onAgregarArchivo(tipo.id, arch)}
+                    onEliminar={(id) => onEliminarArchivo(tipo.id, id)}
+                    onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
+                    onVer={setVisorArchivo}
+                    nombreProveedor={lote.proveedor}
+                    alertaConsecutivo={alertasConsecutivos[tipo.id]}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </motion.div>

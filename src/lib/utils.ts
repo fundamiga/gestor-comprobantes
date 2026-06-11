@@ -17,14 +17,14 @@ export function calcularEstadoLote(lote: Lote): EstadoLote {
   const cargados = requeridos.filter((t) => {
     const docs = lote.documentos[t.id] ?? [];
     const min = t.minArchivos ?? 1;
-    if (min === 2) {
-      if (docs.length < 2) return false;
+    if (min >= 1 && t.id !== "CC1" && t.id !== "FV") { // CC1 y FV siguen siendo planos por ahora
+      if (docs.length < 1) return false;
       const gruposMap: { [key: string]: number } = {};
       docs.forEach((d) => {
         const gid = d.grupoId || "grupo_inicial";
         gruposMap[gid] = (gruposMap[gid] ?? 0) + 1;
       });
-      const algunGrupoIncompleto = Object.values(gruposMap).some((count) => count === 1);
+      const algunGrupoIncompleto = Object.values(gruposMap).some((count) => count < min);
       return !algunGrupoIncompleto;
     }
     return docs.length >= min;
@@ -88,7 +88,9 @@ export function analizarConsecutivos(periodo: Periodo): Record<string, AlertaCon
       const archivos = lote.documentos[tipo.id] || [];
       if (archivos.length === 0) return;
 
-      if (tipo.minArchivos === 2) {
+      const esGrupo = tipo.minArchivos && tipo.minArchivos >= 1 && tipo.id !== "CC1" && tipo.id !== "FV";
+
+      if (esGrupo) {
         // Por parejas: extraemos un solo número por cada grupo/pareja
         const gruposMap: { [key: string]: ArchivoSubido[] } = {};
         archivos.forEach((a) => {

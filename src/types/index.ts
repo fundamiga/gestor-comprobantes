@@ -8,6 +8,7 @@ export interface TipoDocumento {
   color: string;
   minArchivos?: number;
   ayudaPareja?: string;
+  categoria?: string;
 }
 
 // Un archivo subido (foto o PDF), información ligera
