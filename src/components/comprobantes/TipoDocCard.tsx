@@ -248,7 +248,7 @@ export function TipoDocCard({
   }
 
   // ── 3. ACCIONES DE GRUPOS ──────────────────────────────────────────────────────────
-  const handleCrearGrupo = () => {
+  const handleCrearGrupo = (index?: number) => {
     let numFinal = proximoRecomendado;
     if (numeroSiguiente !== "") {
       const userNum = parseInt(numeroSiguiente, 10);
@@ -260,7 +260,23 @@ export function TipoDocCard({
 
     const nuevoId = `grupo_${Date.now()}`;
     const nuevoNombre = `Pareja ${numFinal}`;
+    
+    // 1. Añadir a los grupos vacíos
     setGruposVacios((prev) => [...prev, { id: nuevoId, nombre: nuevoNombre }]);
+    
+    // 2. Si se especifica un índice, actualizar el orden inmediatamente
+    if (typeof index === "number") {
+      const baseIds = todosGrupos.map(g => g.id);
+      const originIds = ordenIds.length === baseIds.length && ordenIds.every(id => baseIds.includes(id)) 
+        ? ordenIds 
+        : baseIds;
+      
+      const nextIds = [...originIds];
+      nextIds.splice(index, 0, nuevoId);
+      
+      setOrdenIds(nextIds);
+      ordenIdsDragRef.current = nextIds;
+    }
   };
 
   const handleEliminarGrupo = (grupoId: string) => {
@@ -568,7 +584,43 @@ export function TipoDocCard({
                  onReorder={handleReorder} 
                  style={{ display: "flex", flexDirection: "column", gap: 14, margin: 0, padding: 0, listStyle: "none" }}
               >
-                {renderGrupos.map((grupo) => {
+                {/* Botón para insertar antes de la primera pareja */}
+                {renderGrupos.length > 0 && (
+                  <div style={{ 
+                    display: "flex", 
+                    justifyContent: "center", 
+                    margin: "0 0 -18px 0", 
+                    position: "relative", 
+                    zIndex: 5,
+                    opacity: 0,
+                    transition: "opacity 0.2s",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = "0"}
+                  >
+                    <button
+                      onClick={() => handleCrearGrupo(0)}
+                      title="Insertar pareja al inicio"
+                      style={{
+                        background: tipo.color,
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: 20,
+                        height: 20,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
+                )}
+
+                {renderGrupos.map((grupo, index) => {
                   const esRenombrando = renombrandoId === grupo.id;
                   const count = grupo.archivos.length;
                   const gFaltaPareja = count === 1;
@@ -614,282 +666,318 @@ export function TipoDocCard({
                   }
 
                   return (
-                    <Reorder.Item
-                      key={grupo.id}
-                      value={grupo.id}
-                      style={{
-                        background: "#f8fafc",
-                        border: `1.5px solid ${gFaltaPareja ? "#fde68a" : "#e2e8f0"}`,
-                        borderRadius: 12,
-                        padding: "14px",
-                        position: "relative",
-                      }}
-                    >
-                      {/* Cabecera de la Pareja */}
-                      <div
+                    <>
+                      <Reorder.Item
+                        key={grupo.id}
+                        value={grupo.id}
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          marginBottom: 10,
-                          gap: 10,
-                          flexWrap: "wrap",
+                          background: "#f8fafc",
+                          border: `1.5px solid ${gFaltaPareja ? "#fde68a" : "#e2e8f0"}`,
+                          borderRadius: 12,
+                          padding: "14px",
+                          position: "relative",
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
-                          <div title="Arrastra desde aquí para cambiar el orden" style={{ cursor: "grab", color: "#94a3b8", display: "flex" }}>
-                            <GripVertical size={16} />
-                          </div>
-                          {esRenombrando ? (
-                            <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", maxWidth: 300 }}>
-                              <input
-                                type="text"
-                                value={nuevoNombreText}
-                                onChange={(e) => setNuevoNombreText(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") handleGuardarNombreGrupo(grupo.id);
-                                  if (e.key === "Escape") setRenombrandoId(null);
-                                }}
-                                autoFocus
-                                style={{
-                                  padding: "4px 8px",
-                                  border: "1.5px solid #3b82f6",
-                                  borderRadius: 8,
-                                  fontSize: 12,
-                                  fontFamily: "inherit",
-                                  width: "100%",
-                                }}
-                              />
-                              <button
-                                onClick={() => handleGuardarNombreGrupo(grupo.id)}
-                                style={{
-                                  background: "#10b981",
-                                  color: "#fff",
-                                  border: "none",
-                                  borderRadius: 6,
-                                  padding: 4,
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <Check size={14} />
-                              </button>
-                              <button
-                                onClick={() => setRenombrandoId(null)}
-                                style={{
-                                  background: "#64748b",
-                                  color: "#fff",
-                                  border: "none",
-                                  borderRadius: 6,
-                                  padding: 4,
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <X size={14} />
-                              </button>
+                        {/* Cabecera de la Pareja */}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            marginBottom: 10,
+                            gap: 10,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+                            <div title="Arrastra desde aquí para cambiar el orden" style={{ cursor: "grab", color: "#94a3b8", display: "flex" }}>
+                              <GripVertical size={16} />
                             </div>
-                          ) : (
-                            <>
-                              <strong style={{ fontSize: 13, color: "#334155" }}>
-                                {grupo.nombre}
-                              </strong>
+                            {esRenombrando ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", maxWidth: 300 }}>
+                                <input
+                                  type="text"
+                                  value={nuevoNombreText}
+                                  onChange={(e) => setNuevoNombreText(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleGuardarNombreGrupo(grupo.id);
+                                    if (e.key === "Escape") setRenombrandoId(null);
+                                  }}
+                                  autoFocus
+                                  style={{
+                                    padding: "4px 8px",
+                                    border: "1.5px solid #3b82f6",
+                                    borderRadius: 8,
+                                    fontSize: 12,
+                                    fontFamily: "inherit",
+                                    width: "100%",
+                                  }}
+                                />
+                                <button
+                                  onClick={() => handleGuardarNombreGrupo(grupo.id)}
+                                  style={{
+                                    background: "#10b981",
+                                    color: "#fff",
+                                    border: "none",
+                                    borderRadius: 6,
+                                    padding: 4,
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <Check size={14} />
+                                </button>
+                                <button
+                                  onClick={() => setRenombrandoId(null)}
+                                  style={{
+                                    background: "#64748b",
+                                    color: "#fff",
+                                    border: "none",
+                                    borderRadius: 6,
+                                    padding: 4,
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <strong style={{ fontSize: 13, color: "#334155" }}>
+                                  {grupo.nombre}
+                                </strong>
+                                <button
+                                  onClick={() => handleRenombrarGrupo(grupo.id, grupo.nombre)}
+                                  title="Cambiar nombre de esta pareja"
+                                  style={{
+                                    background: "none",
+                                    border: "none",
+                                    color: "#94a3b8",
+                                    cursor: "pointer",
+                                    padding: 2,
+                                    display: "flex",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <Edit2 size={11} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Botones de acción del grupo */}
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            {count >= 2 && (
                               <button
-                                onClick={() => handleRenombrarGrupo(grupo.id, grupo.nombre)}
-                                title="Cambiar nombre de esta pareja"
+                                onClick={() => handleCombinarPdfGrupo(grupo)}
                                 style={{
-                                  background: "none",
-                                  border: "none",
-                                  color: "#94a3b8",
-                                  cursor: "pointer",
-                                  padding: 2,
-                                  display: "flex",
+                                  display: "inline-flex",
                                   alignItems: "center",
+                                  gap: 4,
+                                  background: "#fff",
+                                  border: "1.5px solid #cbd5e1",
+                                  borderRadius: 8,
+                                  padding: "4px 8px",
+                                  fontSize: 10,
+                                  fontWeight: 800,
+                                  color: "#475569",
+                                  cursor: "pointer",
+                                  fontFamily: "inherit",
                                 }}
                               >
-                                <Edit2 size={11} />
+                                <FileDown size={11} /> Combinar PDF
                               </button>
-                            </>
-                          )}
-                        </div>
-
-                        {/* Botones de acción del grupo */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          {count >= 2 && (
+                            )}
                             <button
-                              onClick={() => handleCombinarPdfGrupo(grupo)}
+                              onClick={() => handleEliminarGrupo(grupo.id)}
+                              title="Eliminar esta pareja"
                               style={{
+                                background: "none",
+                                border: "none",
+                                color: "#ef4444",
+                                cursor: "pointer",
+                                padding: 4,
                                 display: "inline-flex",
                                 alignItems: "center",
-                                gap: 4,
-                                background: "#fff",
-                                border: "1.5px solid #cbd5e1",
-                                borderRadius: 8,
-                                padding: "4px 8px",
+                              }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Advertencia de salto de consecutivo */}
+                        {faltanAntes.length > 0 && (
+                          <div
+                            style={{
+                              background: "#fee2e2",
+                              border: "1px solid #fecaca",
+                              borderRadius: 8,
+                              padding: "8px 12px",
+                              marginBottom: 10,
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 6,
+                              fontSize: 10,
+                              color: "#b91c1c",
+                            }}
+                          >
+                            <AlertCircle size={13} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
+                            <div>
+                              <strong>Salto de secuencia:</strong> Faltan los consecutivos{" "}
+                              <strong>
+                                {faltanAntes.length > 7
+                                  ? `${faltanAntes[0]} al ${faltanAntes[faltanAntes.length - 1]} (${faltanAntes.length} números faltantes)`
+                                  : faltanAntes.join(", ")}
+                              </strong>{" "}
+                              antes de este archivo.
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Advertencia interna del grupo de Consecutivo Repetido */}
+                        {esRepetido && (
+                          <div
+                            style={{
+                              background: "#fee2e2",
+                              border: "1px solid #fecaca",
+                              borderRadius: 8,
+                              padding: "8px 12px",
+                              marginBottom: 10,
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 6,
+                              fontSize: 10,
+                              color: "#b91c1c",
+                            }}
+                          >
+                            <AlertCircle size={13} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
+                            <div>
+                              <strong>Consecutivo repetido:</strong> El número <strong>{numGrupo}</strong> ya está siendo usado por otra pareja u otro lote en este mes.
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Advertencia interna del grupo */}
+                        {gFaltaPareja && (
+                          <div
+                            style={{
+                              background: "#fffbeb",
+                              border: "1px solid #fde68a",
+                              borderRadius: 8,
+                              padding: "8px 12px",
+                              marginBottom: 10,
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 6,
+                              fontSize: 10,
+                              color: "#b45309",
+                            }}
+                          >
+                            <AlertCircle size={13} style={{ color: "#d97706", flexShrink: 0, marginTop: 1 }} />
+                            <div>
+                              <strong>Falta un soporte:</strong> Se requiere subir el archivo complementario de: <strong>{tipo.ayudaPareja}</strong>.
+                            </div>
+                          </div>
+                        )}
+                        {gEsImparExtra && (
+                          <div
+                            style={{
+                              background: "#f0f9ff",
+                              border: "1px solid #bae6fd",
+                              borderRadius: 8,
+                              padding: "8px 12px",
+                              marginBottom: 10,
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 6,
+                              fontSize: 10,
+                              color: "#0369a1",
+                            }}
+                          >
+                            <AlertCircle size={13} style={{ color: "#0284c7", flexShrink: 0, marginTop: 1 }} />
+                            <div>
+                              <strong>Nota sobre archivos impares:</strong> Tienes {count} archivos. Si es un caso especial con soportes adicionales, ignora este aviso.
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Listado de archivos y dropzone de esta pareja */}
+                        <div style={{ marginBottom: count > 0 ? 10 : 0 }}>
+                          <ZonaUpload
+                            tipoDoc={tipo}
+                            archivos={grupo.archivos}
+                            onAgregar={onAgregar}
+                            onEliminar={onEliminar}
+                            onVer={onVer}
+                            grupoId={grupo.id}
+                            grupoNombre={grupo.nombre}
+                            ocultarDropzone={count >= 2 && !uploadExtra}
+                          />
+                        </div>
+
+                        {/* Botón para forzar más archivos (Trio/Cuarteto) */}
+                        {count >= 2 && (
+                          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                            <button
+                              onClick={() =>
+                                setExtraUploadActivo((prev) => ({ ...prev, [grupo.id]: !uploadExtra }))
+                              }
+                              style={{
+                                background: "none",
+                                border: "none",
+                                color: tipo.color,
                                 fontSize: 10,
                                 fontWeight: 800,
-                                color: "#475569",
                                 cursor: "pointer",
+                                padding: "4px 0",
+                                textDecoration: "underline",
                                 fontFamily: "inherit",
                               }}
                             >
-                              <FileDown size={11} /> Combinar PDF
+                              {uploadExtra ? "✕ Cerrar subida" : "+ Agregar soporte extra a esta pareja"}
                             </button>
-                          )}
-                          <button
-                            onClick={() => handleEliminarGrupo(grupo.id)}
-                            title="Eliminar esta pareja"
-                            style={{
-                              background: "none",
-                              border: "none",
-                              color: "#ef4444",
-                              cursor: "pointer",
-                              padding: 4,
-                              display: "inline-flex",
-                              alignItems: "center",
-                            }}
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
+                          </div>
+                        )}
+                      </Reorder.Item>
+                      
+                      {/* Botón para insertar entre parejas */}
+                      <div style={{ 
+                        display: "flex", 
+                        justifyContent: "center", 
+                        margin: "-10px 0 -4px 0", 
+                        position: "relative", 
+                        zIndex: 5,
+                        opacity: 0,
+                        transition: "opacity 0.2s",
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = "0"}
+                      >
+                        <button
+                          onClick={() => handleCrearGrupo(todosGrupos.indexOf(grupo) + 1)}
+                          title="Insertar pareja aquí"
+                          style={{
+                            background: tipo.color,
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "50%",
+                            width: 20,
+                            height: 20,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                          }}
+                        >
+                          <Plus size={12} />
+                        </button>
                       </div>
-
-                      {/* Advertencia de salto de consecutivo */}
-                      {faltanAntes.length > 0 && (
-                        <div
-                          style={{
-                            background: "#fee2e2",
-                            border: "1px solid #fecaca",
-                            borderRadius: 8,
-                            padding: "8px 12px",
-                            marginBottom: 10,
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 6,
-                            fontSize: 10,
-                            color: "#b91c1c",
-                          }}
-                        >
-                          <AlertCircle size={13} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
-                          <div>
-                            <strong>Salto de secuencia:</strong> Faltan los consecutivos{" "}
-                            <strong>
-                              {faltanAntes.length > 7
-                                ? `${faltanAntes[0]} al ${faltanAntes[faltanAntes.length - 1]} (${faltanAntes.length} números faltantes)`
-                                : faltanAntes.join(", ")}
-                            </strong>{" "}
-                            antes de este archivo.
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Advertencia interna del grupo de Consecutivo Repetido */}
-                      {esRepetido && (
-                        <div
-                          style={{
-                            background: "#fee2e2",
-                            border: "1px solid #fecaca",
-                            borderRadius: 8,
-                            padding: "8px 12px",
-                            marginBottom: 10,
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 6,
-                            fontSize: 10,
-                            color: "#b91c1c",
-                          }}
-                        >
-                          <AlertCircle size={13} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
-                          <div>
-                            <strong>Consecutivo repetido:</strong> El número <strong>{numGrupo}</strong> ya está siendo usado por otra pareja u otro lote en este mes.
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Advertencia interna del grupo */}
-                      {gFaltaPareja && (
-                        <div
-                          style={{
-                            background: "#fffbeb",
-                            border: "1px solid #fde68a",
-                            borderRadius: 8,
-                            padding: "8px 12px",
-                            marginBottom: 10,
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 6,
-                            fontSize: 10,
-                            color: "#b45309",
-                          }}
-                        >
-                          <AlertCircle size={13} style={{ color: "#d97706", flexShrink: 0, marginTop: 1 }} />
-                          <div>
-                            <strong>Falta un soporte:</strong> Se requiere subir el archivo complementario de: <strong>{tipo.ayudaPareja}</strong>.
-                          </div>
-                        </div>
-                      )}
-                      {gEsImparExtra && (
-                        <div
-                          style={{
-                            background: "#f0f9ff",
-                            border: "1px solid #bae6fd",
-                            borderRadius: 8,
-                            padding: "8px 12px",
-                            marginBottom: 10,
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 6,
-                            fontSize: 10,
-                            color: "#0369a1",
-                          }}
-                        >
-                          <AlertCircle size={13} style={{ color: "#0284c7", flexShrink: 0, marginTop: 1 }} />
-                          <div>
-                            <strong>Nota sobre archivos impares:</strong> Tienes {count} archivos. Si es un caso especial con soportes adicionales, ignora este aviso.
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Listado de archivos y dropzone de esta pareja */}
-                      <div style={{ marginBottom: count > 0 ? 10 : 0 }}>
-                        <ZonaUpload
-                          tipoDoc={tipo}
-                          archivos={grupo.archivos}
-                          onAgregar={onAgregar}
-                          onEliminar={onEliminar}
-                          onVer={onVer}
-                          grupoId={grupo.id}
-                          grupoNombre={grupo.nombre}
-                          ocultarDropzone={count >= 2 && !uploadExtra}
-                        />
-                      </div>
-
-                      {/* Botón para forzar más archivos (Trio/Cuarteto) */}
-                      {count >= 2 && (
-                        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                          <button
-                            onClick={() =>
-                              setExtraUploadActivo((prev) => ({ ...prev, [grupo.id]: !uploadExtra }))
-                            }
-                            style={{
-                              background: "none",
-                              border: "none",
-                              color: tipo.color,
-                              fontSize: 10,
-                              fontWeight: 800,
-                              cursor: "pointer",
-                              padding: "4px 0",
-                              textDecoration: "underline",
-                              fontFamily: "inherit",
-                            }}
-                          >
-                            {uploadExtra ? "✕ Cerrar subida" : "+ Agregar soporte extra a esta pareja"}
-                          </button>
-                        </div>
-                      )}
-                    </Reorder.Item>
+                    </>
                   );
                 })}
               </Reorder.Group>
