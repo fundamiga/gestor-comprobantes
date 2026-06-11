@@ -131,7 +131,17 @@ export async function descargarPeriodoZip(periodo: Periodo) {
 
         // Creamos la subcarpeta final para el tipo de documento (usando su label legible)
         const nombreFinalCarpeta = configTipo ? configTipo.label.replace(/[\\/:*?"<>|]/g, '_') : tipoId;
-        const folderTipo = folderDestino.folder(nombreFinalCarpeta);
+        
+        let folderTipo: JSZip | null = null;
+        
+        // Excepción: Si son los "ARCHIVOS GENERALES" de bancos o caja, no creamos subcarpeta extra, 
+        // los metemos directamente "a la par" de las otras carpetas (CONCILIACION, EXTRACTO, etc.)
+        if (tipoId === "BANC_ARCHIVOS" || tipoId === "CAJA_ARCHIVOS") {
+           folderTipo = folderDestino;
+        } else {
+           folderTipo = folderDestino.folder(nombreFinalCarpeta);
+        }
+
         if (!folderTipo) continue;
 
         // Determinamos si este tipo usa lógica de grupos (Parejas/Tríos)
