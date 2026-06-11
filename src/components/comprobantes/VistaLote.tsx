@@ -78,16 +78,16 @@ export function VistaLote({
         />
       )}
 
-      {/* Header sticky */}
+      {/* Header sticky - Reparado con mayor prioridad */}
       <div
         style={{
-          background: "#fff",
-          borderBottom: "1px solid #f1f5f9",
+          background: "#ffffff",
+          borderBottom: "2px solid #e2e8f0",
           padding: "14px 24px",
           position: "sticky",
           top: 0,
-          zIndex: 10,
-          boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+          zIndex: 1000,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
         }}
       >
         <button
