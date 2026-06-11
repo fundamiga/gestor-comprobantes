@@ -386,6 +386,21 @@ export function TipoDocCard({
             >
               {tipo.label}
             </span>
+            {tipo.id.includes("_ARCHIVOS") && (
+              <span
+                style={{
+                  fontSize: 8,
+                  background: tipo.color,
+                  color: "#fff",
+                  borderRadius: 4,
+                  padding: "1px 6px",
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                }}
+              >
+                📁 DIRECTO EN CARPETA
+              </span>
+            )}
             {!tipo.requerido && (
               <span
                 style={{
