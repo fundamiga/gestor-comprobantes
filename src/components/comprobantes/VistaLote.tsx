@@ -8,6 +8,7 @@ import { calcularEstadoLote, analizarConsecutivos } from "@/lib/utils";
 import { EstadoBadge, VisorArchivo } from "./UIComunes";
 import { TipoDocCard } from "./TipoDocCard";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 interface VistaLoteProps {
   lote: Lote;
