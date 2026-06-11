@@ -2,7 +2,7 @@ import JSZip from 'jszip';
 import { toast } from 'sonner';
 import { PDFDocument } from 'pdf-lib';
 import type { Periodo, ArchivoSubido } from '@/types';
-import { MESES } from '@/lib/constantes';
+import { MESES, TIPOS_DOCUMENTO } from '@/lib/constantes';
 
 /**
  * Fusiona múltiples archivos (PDFs e imágenes JPG/PNG) en un único archivo PDF consolidado.

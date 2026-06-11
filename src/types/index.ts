@@ -3,8 +3,8 @@ export interface TipoDocumento {
   id: string;
   label: string;
   nombre: string;
-  descripcion: string;
-  requerido: boolean;
+  descripcion?: string;
+  requerido?: boolean;
   color: string;
   minArchivos?: number;
   ayudaPareja?: string;
