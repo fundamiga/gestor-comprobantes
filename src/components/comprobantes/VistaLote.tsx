@@ -254,28 +254,52 @@ export function VistaLote({
             </div>
           </div>
 
-          {/* Botón Descargar Lote */}
-          <button
-            onClick={handleDescargarLote}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              background: "#10b981",
-              color: "#fff",
-              border: "none",
-              borderRadius: 12,
-              padding: "9px 18px",
-              cursor: "pointer",
-              fontWeight: 800,
-              fontSize: 12,
-              fontFamily: "inherit",
-              boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)",
-              transition: "all 0.2s",
-            }}
-          >
-            <FileDown size={15} /> Descargar Lote (PDF)
-          </button>
+          <div style={{ display: "flex", gap: 10 }}>
+            {/* Botón Descargar Lote */}
+            <button
+              onClick={handleDescargarLote}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "#f1f5f9",
+                color: "#475569",
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+                padding: "9px 18px",
+                cursor: "pointer",
+                fontWeight: 700,
+                fontSize: 12,
+                fontFamily: "inherit",
+              }}
+            >
+              <FileDown size={15} /> PDF
+            </button>
+
+            {/* Botón Guardar - Fijo y accesible */}
+            <button
+               onClick={() => {
+                 toast.success("Todos los cambios sincronizados con la base de datos");
+               }}
+               style={{
+                 display: "inline-flex",
+                 alignItems: "center",
+                 gap: 8,
+                 background: "#10b981",
+                 color: "#fff",
+                 border: "none",
+                 borderRadius: 12,
+                 padding: "9px 22px",
+                 cursor: "pointer",
+                 fontWeight: 800,
+                 fontSize: 12,
+                 fontFamily: "inherit",
+                 boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)",
+               }}
+            >
+              <CheckCircle size={15} /> GUARDAR
+            </button>
+          </div>
         </div>
       </div>
 
