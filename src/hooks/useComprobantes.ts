@@ -31,13 +31,25 @@ export function useComprobantes() {
     cargar();
   }, []);
 
-  // ── Helper para sincronizar un período completo en Supabase ───────────────
-  const syncPeriodo = useCallback(async (periodo: Periodo) => {
-    const { error } = await supabase
-      .from("periodos")
-      .upsert({ id: periodo.id, mes: periodo.mes, anio: periodo.anio, lotes: periodo.lotes });
-    if (error) console.error("Error guardando período:", error.message);
-  }, []);
+  // ── Sincronización con Debounce ───────────────────
+  useEffect(() => {
+    if (!cargado || periodos.length === 0) return;
+
+    const timeout = setTimeout(async () => {
+      const promesas = periodos.map(p => 
+        supabase.from("periodos").upsert({
+          id: p.id,
+          mes: p.mes,
+          anio: p.anio,
+          lotes: p.lotes 
+        })
+      );
+      await Promise.all(promesas);
+      console.log("Base de datos sincronizada");
+    }, 1500); 
+
+    return () => clearTimeout(timeout);
+  }, [periodos, cargado]);
 
   // ── Períodos ──────────────────────────────────────────────────────────────
   const crearPeriodo = useCallback(
@@ -46,13 +58,12 @@ export function useComprobantes() {
       if (existente) return existente;
 
       const nuevo: Periodo = { id: uid(), mes, anio, lotes: [] };
-      await syncPeriodo(nuevo);
       setPeriodos((prev) =>
         [...prev, nuevo].sort((a, b) => b.anio - a.anio || b.mes - a.mes)
       );
       return nuevo;
     },
-    [periodos, syncPeriodo]
+    [periodos]
   );
 
   const eliminarPeriodo = useCallback(
@@ -79,16 +90,14 @@ export function useComprobantes() {
       setPeriodos((prev) => {
         const next = prev.map((p) => {
           if (p.id !== periodoId) return p;
-          const actualizado = { ...p, lotes: [...p.lotes, nuevo] };
-          syncPeriodo(actualizado);
-          return actualizado;
+          return { ...p, lotes: [...p.lotes, nuevo] };
         });
         return next;
       });
 
       return nuevo;
     },
-    [syncPeriodo]
+    []
   );
 
   const eliminarLote = useCallback(
@@ -96,14 +105,12 @@ export function useComprobantes() {
       setPeriodos((prev) => {
         const next = prev.map((p) => {
           if (p.id !== periodoId) return p;
-          const actualizado = { ...p, lotes: p.lotes.filter((l) => l.id !== loteId) };
-          syncPeriodo(actualizado);
-          return actualizado;
+          return { ...p, lotes: p.lotes.filter((l) => l.id !== loteId) };
         });
         return next;
       });
     },
-    [syncPeriodo]
+    []
   );
 
   const actualizarLote = useCallback(
@@ -111,17 +118,15 @@ export function useComprobantes() {
       setPeriodos((prev) => {
         const next = prev.map((p) => {
           if (p.id !== periodoId) return p;
-          const actualizado = {
+          return {
             ...p,
             lotes: p.lotes.map((l) => (l.id === loteId ? { ...l, ...datos } : l)),
           };
-          syncPeriodo(actualizado);
-          return actualizado;
         });
         return next;
       });
     },
-    [syncPeriodo]
+    []
   );
 
   // ── Archivos ──────────────────────────────────────────────────────────────
@@ -138,14 +143,12 @@ export function useComprobantes() {
               documentos: { ...l.documentos, [tipoId]: [...prevArchivos, archivo] },
             };
           });
-          const actualizado = { ...p, lotes };
-          syncPeriodo(actualizado);
-          return actualizado;
+          return { ...p, lotes };
         });
         return next;
       });
     },
-    [syncPeriodo]
+    []
   );
 
   const eliminarArchivo = useCallback(
@@ -163,14 +166,12 @@ export function useComprobantes() {
               },
             };
           });
-          const actualizado = { ...p, lotes };
-          syncPeriodo(actualizado);
-          return actualizado;
+          return { ...p, lotes };
         });
         return next;
       });
     },
-    [syncPeriodo]
+    []
   );
 
   const actualizarArchivosDoc = useCallback(
@@ -188,14 +189,12 @@ export function useComprobantes() {
               },
             };
           });
-          const actualizado = { ...p, lotes };
-          syncPeriodo(actualizado);
-          return actualizado;
+          return { ...p, lotes };
         });
         return next;
       });
     },
-    [syncPeriodo]
+    []
   );
 
   return {
