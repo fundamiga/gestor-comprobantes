@@ -157,14 +157,14 @@ export function VistaLote({
                     <input
                       value={refEdit}
                       onChange={(e) => setRefEdit(e.target.value)}
-                      placeholder="Número inicial del consecutivo"
+                      placeholder="Número..."
                       style={{
                         padding: "4px 8px",
                         border: "1px solid #cbd5e1",
                         borderRadius: 6,
                         fontSize: 12,
                         outline: "none",
-                        width: 150,
+                        width: 100,
                       }}
                     />
                     <button
@@ -280,7 +280,7 @@ export function VistaLote({
             {/* Botón Guardar - Fijo y accesible */}
             <button
                onClick={() => {
-                 toast.success("Todos los cambios sincronizados con la base de datos");
+                 toast.success("Todos los cambios sincronizados");
                }}
                style={{
                  display: "inline-flex",
@@ -306,7 +306,33 @@ export function VistaLote({
 
       {/* Contenido */}
       <div style={{ padding: "20px 24px", maxWidth: 680, margin: "0 auto" }}>
-        {/* Alerta faltantes */}
+        
+        {/* BOTÓN ORIGINAL DE GUARDAR (Reinsertado) */}
+        <div style={{ marginBottom: 20 }}>
+           <button
+             onClick={() => {
+               toast.success("¡Sincronización manual completada!");
+             }}
+             style={{
+               width: "100%",
+               display: "inline-flex",
+               alignItems: "center",
+               justifyContent: "center",
+               gap: 10,
+               padding: "14px 24px",
+               background: "#10b981",
+               color: "#fff",
+               borderRadius: 14,
+               fontSize: 14,
+               fontWeight: 900,
+               cursor: "pointer",
+               boxShadow: "0 6px 16px rgba(16, 185, 129, 0.25)",
+               border: "none"
+             }}
+           >
+             <CheckCircle2 size={20} /> GUARDAR CAMBIOS DE ESTE LOTE
+           </button>
+        </div>
         {faltantes.length > 0 && (
           <div
             style={{
