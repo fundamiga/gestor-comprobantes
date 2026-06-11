@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   FileText,
   CheckCircle,
@@ -13,7 +13,9 @@ import {
   Edit2,
   Check,
   X,
+  GripVertical,
 } from "lucide-react";
+import { Reorder } from "framer-motion";
 import type { ArchivoSubido, TipoDocumento } from "@/types";
 import { ZonaUpload } from "./ZonaUpload";
 
@@ -49,7 +51,28 @@ export function TipoDocCard({
   const [renombrandoId, setRenombrandoId] = useState<string | null>(null);
   const [nuevoNombreText, setNuevoNombreText] = useState("");
   const [extraUploadActivo, setExtraUploadActivo] = useState<{ [grupoId: string]: boolean }>({});
+  const [ordenIds, setOrdenIds] = useState<string[]>([]);
   const [numeroSiguiente, setNumeroSiguiente] = useState<string>("");
+  const [guardadoOk, setGuardadoOk] = useState(false);
+
+  // Refs para auto-guardado sin problemas de stale closures
+  const archivosRef = useRef(archivos);
+  archivosRef.current = archivos;
+  const gruposVaciosRef = useRef(gruposVacios);
+  gruposVaciosRef.current = gruposVacios;
+  // Este ref se actualiza SÍNCRONAMENTE en onReorder (no espera al render)
+  // para que onDragEnd siempre lea el orden final correcto
+  const ordenIdsDragRef = useRef<string[]>([]);
+  const onActualizarArchivosRef = useRef(onActualizarArchivos);
+  onActualizarArchivosRef.current = onActualizarArchivos;
+  const setGruposVaciosRef = useRef(setGruposVacios);
+  setGruposVaciosRef.current = setGruposVacios;
+
+  // Handler de reorder: actualiza ref y estado al mismo tiempo
+  const handleReorder = useCallback((newIds: string[]) => {
+    ordenIdsDragRef.current = newIds; // síncrono → disponible inmediatamente
+    setOrdenIds(newIds);              // asíncrono → dispara re-render
+  }, []);
 
   const tiene = archivos.length > 0;
 
@@ -103,6 +126,7 @@ export function TipoDocCard({
     });
   }
 
+  // Extraer número solo para cálculo de consecutivos (NO para ordenar el drag)
   const extraerNumero = (grupo: GrupoPareja) => {
     let numStr: number | null = null;
     let fallback: number | null = null;
@@ -123,9 +147,17 @@ export function TipoDocCard({
     return numStr !== null ? numStr : (fallback !== null ? fallback : 999999);
   };
 
-  // Ordenar visualmente los grupos por número extraído
+  // Ordenar grupos usando grupoOrden (posición guardada explícitamente por el usuario al arrastrar).
+  // Si ningún archivo tiene grupoOrden (datos viejos), se toma el orden natural del array.
   if (esPorParejas) {
-    todosGrupos.sort((a, b) => extraerNumero(a) - extraerNumero(b));
+    todosGrupos.sort((a, b) => {
+      const ordenA = a.archivos.length > 0 ? (a.archivos[0].grupoOrden ?? Infinity) : Infinity;
+      const ordenB = b.archivos.length > 0 ? (b.archivos[0].grupoOrden ?? Infinity) : Infinity;
+      // Si ambos tienen grupoOrden definido, comparar por él
+      if (ordenA !== Infinity || ordenB !== Infinity) return ordenA - ordenB;
+      // Fallback para datos viejos sin grupoOrden: no ordenar (mantener orden del array)
+      return 0;
+    });
   }
 
   // Calcular el número sugerido
@@ -140,6 +172,72 @@ export function TipoDocCard({
   // ── 2. ALERTAS DEL HEADER CARD ────────────────────────────────────────────────────
   let faltaParejaCritico = false;
   let faltaParejaAdvertencia = false;
+
+  const baseIds = todosGrupos.map(g => g.id);
+  const currentIds = ordenIds.length === baseIds.length && ordenIds.every(id => baseIds.includes(id)) ? ordenIds : baseIds;
+  const haCambiadoOrden = JSON.stringify(currentIds) !== JSON.stringify(baseIds);
+
+  // Inicializar ordenIdsDragRef con baseIds si todavia esta vacio (primer render)
+  if (ordenIdsDragRef.current.length === 0 && baseIds.length > 0) {
+    ordenIdsDragRef.current = baseIds;
+  }
+
+  // Función de guardado que LEE DE REFS (no closures) → segura para llamar desde el botón
+  const guardarOrdenDesdeRef = useCallback(() => {
+    // Usar ordenIdsDragRef que se actualizó síncronamente en onReorder
+    // Si está vacío pero haCambiadoOrden es true, usamos ordenIds (estado)
+    const latestIds = ordenIdsDragRef.current.length > 0 ? ordenIdsDragRef.current : ordenIds;
+    const latestArchivos = archivosRef.current;
+    const latestVacios = gruposVaciosRef.current;
+
+    if (latestIds.length === 0) return;
+
+    const archivosOrdenados: ArchivoSubido[] = [];
+    let vaciosActualizados = [...latestVacios];
+
+    latestIds.forEach((grupoId, index) => {
+      // Intentar preservar el nombre actual si ya tiene uno coherente
+      const grupoActual = latestVacios.find(v => v.id === grupoId) || 
+                         (grupoId === "grupo_inicial" ? { nombre: "Pareja 1" } : null);
+      
+      let nombreBase = grupoActual?.nombre || 
+                       latestArchivos.find(a => (a.grupoId || "grupo_inicial") === grupoId)?.grupoNombre || 
+                       `Pareja ${index + 1}`;
+      
+      // Solo re-numerar si el nombre sigue el patrón "Pareja X"
+      const esPatronPareja = /^Pareja \d+$/.test(nombreBase);
+      const nuevoNombre = esPatronPareja ? `Pareja ${index + 1}` : nombreBase;
+
+      const archivosDelGrupo = latestArchivos
+        .filter(a => (a.grupoId || "grupo_inicial") === grupoId)
+        .map(a => ({ ...a, grupoNombre: nuevoNombre, grupoOrden: index }));
+      
+      archivosOrdenados.push(...archivosDelGrupo);
+
+      vaciosActualizados = vaciosActualizados.map(v =>
+        v.id === grupoId ? { ...v, nombre: nuevoNombre } : v
+      );
+    });
+
+    const archivosRestantes = latestArchivos.filter(
+      a => !latestIds.includes(a.grupoId || "grupo_inicial")
+    );
+    archivosOrdenados.push(...archivosRestantes);
+
+    setGruposVaciosRef.current(vaciosActualizados);
+    onActualizarArchivosRef.current(archivosOrdenados);
+    
+    // Limpiar estados de orden para ocultar botones
+    setOrdenIds([]);
+    ordenIdsDragRef.current = [];
+
+    setGuardadoOk(true);
+    setTimeout(() => setGuardadoOk(false), 1800);
+  }, [ordenIds]);
+
+  const guardarNuevoOrden = guardarOrdenDesdeRef;
+
+  const renderGrupos = currentIds.map(id => todosGrupos.find(g => g.id === id)!).filter(Boolean);
 
   if (esPorParejas) {
     // Es crítico si algún grupo tiene exactamente 1 archivo
@@ -378,13 +476,99 @@ export function TipoDocCard({
 
       {/* ── PANEL EXPANDIDO ──────────────────────────────────────────────────────── */}
       {abierto && (
-        <div style={{ padding: "16px", borderTop: "1.5px solid #f1f5f9", background: "#fff" }}>
+        <div 
+          className="custom-scrollbar"
+          style={{ 
+            padding: "16px", 
+            borderTop: "1.5px solid #f1f5f9", 
+            background: "#fff",
+            maxHeight: "550px", // Limitar altura para tener scroll propio
+            overflowY: "auto",
+            scrollBehavior: "smooth"
+          }}
+        >
           
           {esPorParejas ? (
             // ── RENDERING POR PAREJAS (GRUPOS) ──────────────────────────────────────
             <div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {todosGrupos.map((grupo) => {
+              {guardadoOk && (
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+                  <span style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    background: "#d1fae5",
+                    color: "#065f46",
+                    borderRadius: 8,
+                    padding: "5px 12px",
+                    fontSize: 11,
+                    fontWeight: 800,
+                  }}>
+                    ✓ Orden guardado
+                  </span>
+                </div>
+              )}
+
+              {haCambiadoOrden && (
+                <div style={{ 
+                  display: "flex", 
+                  justifyContent: "space-between", 
+                  alignItems: "center",
+                  background: "#eff6ff",
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  marginBottom: 14,
+                  border: "1.5px dashed #3b82f6"
+                }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#1e40af" }}>
+                    Has cambiado el orden. ¿Deseas guardar los cambios?
+                  </span>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button 
+                      onClick={() => {
+                        setOrdenIds([]);
+                        ordenIdsDragRef.current = [];
+                      }}
+                      style={{
+                        background: "#fff",
+                        border: "1.5px solid #d1d5db",
+                        padding: "6px 12px",
+                        borderRadius: 8,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        fontFamily: "inherit"
+                      }}
+                    >
+                      Deshacer
+                    </button>
+                    <button 
+                      onClick={guardarNuevoOrden}
+                      style={{
+                        background: "#3b82f6",
+                        color: "#fff",
+                        border: "none",
+                        padding: "6px 14px",
+                        borderRadius: 8,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        boxShadow: "0 2px 4px rgba(59, 130, 246, 0.3)"
+                      }}
+                    >
+                      Guardar Orden
+                    </button>
+                  </div>
+                </div>
+              )}
+              <Reorder.Group 
+                 axis="y" 
+                 values={currentIds} 
+                 onReorder={handleReorder} 
+                 style={{ display: "flex", flexDirection: "column", gap: 14, margin: 0, padding: 0, listStyle: "none" }}
+              >
+                {renderGrupos.map((grupo) => {
                   const esRenombrando = renombrandoId === grupo.id;
                   const count = grupo.archivos.length;
                   const gFaltaPareja = count === 1;
@@ -430,8 +614,9 @@ export function TipoDocCard({
                   }
 
                   return (
-                    <div
+                    <Reorder.Item
                       key={grupo.id}
+                      value={grupo.id}
                       style={{
                         background: "#f8fafc",
                         border: `1.5px solid ${gFaltaPareja ? "#fde68a" : "#e2e8f0"}`,
@@ -452,6 +637,9 @@ export function TipoDocCard({
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+                          <div title="Arrastra desde aquí para cambiar el orden" style={{ cursor: "grab", color: "#94a3b8", display: "flex" }}>
+                            <GripVertical size={16} />
+                          </div>
                           {esRenombrando ? (
                             <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", maxWidth: 300 }}>
                               <input
@@ -701,10 +889,10 @@ export function TipoDocCard({
                           </button>
                         </div>
                       )}
-                    </div>
+                    </Reorder.Item>
                   );
                 })}
-              </div>
+              </Reorder.Group>
 
               {/* Botón para iniciar una nueva pareja y Campo para número inicial */}
               <div style={{ display: "flex", gap: 8, marginTop: 14 }}>

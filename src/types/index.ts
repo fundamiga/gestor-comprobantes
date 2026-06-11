@@ -20,6 +20,7 @@ export interface ArchivoSubido {
   tamanioKb: number;
   grupoId?: string;
   grupoNombre?: string;
+  grupoOrden?: number; // Posición explícita del grupo (se guarda al ordenar con drag)
 }
 
 // Colección de archivos agrupada por tipo de documento
