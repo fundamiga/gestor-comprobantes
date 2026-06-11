@@ -122,9 +122,13 @@ export async function descargarPeriodoZip(periodo: Periodo) {
 
         if (categoria === "comprobantes") {
           folderDestino = folderProveedor.folder("Comprobantes") || folderProveedor;
-        } else if (categoria === "bancos" || categoria === "caja") {
+        } else if (categoria === "bancos" || categoria === "caja" || categoria === "conciliaciones") {
           const rootConcil = folderProveedor.folder("CONCILIACIONES") || folderProveedor;
-          folderDestino = rootConcil.folder(categoria.toUpperCase()) || rootConcil;
+          if (categoria === "conciliaciones") {
+             folderDestino = rootConcil;
+          } else {
+             folderDestino = rootConcil.folder(categoria.toUpperCase()) || rootConcil;
+          }
         } else {
           folderDestino = folderProveedor.folder("Otros") || folderProveedor;
         }
@@ -134,9 +138,9 @@ export async function descargarPeriodoZip(periodo: Periodo) {
         
         let folderTipo: JSZip | null = null;
         
-        // Excepción: Si son los "ARCHIVOS GENERALES" de bancos o caja, no creamos subcarpeta extra, 
-        // los metemos directamente "a la par" de las otras carpetas (CONCILIACION, EXTRACTO, etc.)
-        if (tipoId === "BANC_ARCHIVOS" || tipoId === "CAJA_ARCHIVOS") {
+        // Excepción: Si son los "ARCHIVOS GENERALES" de bancos, caja o conciliaciones, no creamos subcarpeta extra, 
+        // los metemos directamente "a la par" en su directorio padre respectivo.
+        if (tipoId === "BANC_ARCHIVOS" || tipoId === "CAJA_ARCHIVOS" || tipoId === "CONCIL_ARCHIVOS") {
            folderTipo = folderDestino;
         } else {
            folderTipo = folderDestino.folder(nombreFinalCarpeta);

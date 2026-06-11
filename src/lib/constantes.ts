@@ -111,6 +111,14 @@ export const TIPOS_DOCUMENTO: TipoDocumento[] = [
     categoria: "caja",
   },
   {
+    id: "CONCIL_ARCHIVOS",
+    label: "ARCHIVOS GENERALES (CONCILIACIONES)",
+    nombre: "Archivos sueltos en la carpeta principal de Conciliaciones",
+    color: "#4f46e5",
+    minArchivos: 1,
+    categoria: "conciliaciones",
+  },
+  {
     id: "CC11",
     label: "CC-11 (Capital)",
     nombre: "Capital Contable",

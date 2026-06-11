@@ -514,6 +514,30 @@ export function VistaLote({
                   ))}
                 </div>
               </div>
+
+              {/* SUB-SECCIÓN OTROS CONCILIACIONES */}
+              {TIPOS_DOCUMENTO.some(t => t.categoria === "conciliaciones") && (
+                <div>
+                  <h4 style={{ fontSize: 11, fontWeight: 900, color: "#4f46e5", marginBottom: 8, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#4f46e5" }} /> GENERALES (CONCILIACIONES)
+                  </h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {TIPOS_DOCUMENTO.filter(t => t.categoria === "conciliaciones").map((tipo) => (
+                      <TipoDocCard
+                        key={tipo.id}
+                        tipo={tipo}
+                        archivos={lote.documentos[tipo.id] ?? []}
+                        onAgregar={(arch) => onAgregarArchivo(tipo.id, arch)}
+                        onEliminar={(id) => onEliminarArchivo(tipo.id, id)}
+                        onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
+                        onVer={setVisorArchivo}
+                        nombreProveedor={lote.proveedor}
+                        alertaConsecutivo={alertasConsecutivos[tipo.id]}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
