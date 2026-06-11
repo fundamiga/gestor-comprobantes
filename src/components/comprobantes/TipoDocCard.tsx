@@ -1015,7 +1015,7 @@ export function TipoDocCard({
                   />
                 </div>
                 <button
-                  onClick={handleCrearGrupo}
+                  onClick={() => handleCrearGrupo()}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
