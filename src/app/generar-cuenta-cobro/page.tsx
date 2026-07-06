@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, FileText, UploadCloud, FileDown, Loader2, Search, UserPlus, PenTool, X, Users, Trash2, Edit2, Check, Image as ImageIcon, Crop as CropIcon, Link as LinkIcon } from "lucide-react";
+import { ArrowLeft, FileText, UploadCloud, FileDown, Loader2, Search, UserPlus, PenTool, X, Users, Trash2, Edit2, Check, Image as ImageIcon, Crop as CropIcon, Link as LinkIcon, Eye } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,6 +48,7 @@ export default function GenerarCuentaCobroPage() {
   const [modalProveedor, setModalProveedor] = useState(false);
   const [modalLista, setModalLista] = useState(false);
   const [modalGestionFirmas, setModalGestionFirmas] = useState(false);
+  const [firmaVistaPrevia, setFirmaVistaPrevia] = useState<FirmaEntry | null>(null);
   
   const [nuevoFirmaNombre, setNuevoFirmaNombre] = useState("");
   const [nuevoFirmaArchivo, setNuevoFirmaArchivo] = useState<File | null>(null);
@@ -565,6 +566,9 @@ export default function GenerarCuentaCobroPage() {
                       <span style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{f.nombre}</span>
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => setFirmaVistaPrevia(f)} style={{ background: "#f0fdf4", color: "#16a34a", border: "none", borderRadius: 8, padding: "8px", cursor: "pointer", display: "flex" }} title="Ver Firma">
+                        <Eye size={14} />
+                      </button>
                       <button disabled={procesandoAccion} onClick={() => handleReemplazarFirma(f.nombre)} style={{ background: "#eff6ff", color: "#3b82f6", border: "none", borderRadius: 8, padding: "8px", cursor: "pointer", display: "flex" }} title="Reemplazar Firma">
                         <Edit2 size={14} />
                       </button>
@@ -577,6 +581,65 @@ export default function GenerarCuentaCobroPage() {
                 {firmasCloud.length === 0 && (
                   <p style={{ textAlign: "center", color: "#64748b", fontSize: 14, marginTop: 20 }}>No hay firmas en la nube aún.</p>
                 )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* LIGHTBOX VISTA PREVIA FIRMA */}
+      <AnimatePresence>
+        {firmaVistaPrevia && (
+          <motion.div
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 24 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setFirmaVistaPrevia(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.85, opacity: 0, y: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: "#fff", borderRadius: 24, padding: 32, maxWidth: 480, width: "100%", boxShadow: "0 30px 80px rgba(0,0,0,0.35)", display: "flex", flexDirection: "column", alignItems: "center", gap: 20, position: "relative" }}
+            >
+              <button
+                onClick={() => setFirmaVistaPrevia(null)}
+                style={{ position: "absolute", top: 14, right: 14, background: "#f1f5f9", border: "none", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#475569" }}
+              >
+                <X size={18} />
+              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, alignSelf: "flex-start" }}>
+                <div style={{ width: 40, height: 40, background: "#f0fdf4", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Eye size={20} style={{ color: "#16a34a" }} />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Vista Previa de Firma</h2>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>{firmaVistaPrevia.nombre}</p>
+                </div>
+              </div>
+              <div style={{ width: "100%", background: "repeating-conic-gradient(#e2e8f0 0% 25%, #f8fafc 0% 50%) 0 0 / 16px 16px", borderRadius: 16, border: "1.5px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 180, padding: 16 }}>
+                <img
+                  src={firmaVistaPrevia.url}
+                  alt={firmaVistaPrevia.nombre}
+                  style={{ maxWidth: "100%", maxHeight: 260, objectFit: "contain", borderRadius: 8, filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.12))" }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 10, width: "100%" }}>
+                <button
+                  onClick={() => { setFirmaVistaPrevia(null); handleReemplazarFirma(firmaVistaPrevia.nombre); }}
+                  style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 16px", background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 12, color: "#1d4ed8", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  <Edit2 size={14} /> Reemplazar
+                </button>
+                <button
+                  onClick={() => { const nombre = firmaVistaPrevia.nombre; setFirmaVistaPrevia(null); handleEliminarFirmaCloud(nombre); }}
+                  style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 16px", background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: 12, color: "#dc2626", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  <Trash2 size={14} /> Eliminar
+                </button>
               </div>
             </motion.div>
           </motion.div>
