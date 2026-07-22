@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = 'force-dynamic';
 
-// Cache en memoria para no hacer demasiadas llamadas a Cloudinary (Recarga 2)
+// Caché en memoria para reducir llamadas a Cloudinary.
+// NOTA: En Vercel (serverless) cada instancia tiene su propia memoria,
+// por eso siempre hay que pasar ?refresh=true después de subir una firma.
+// TTL corto (30 s) para que un reemplazo reciente se refleje pronto.
 let cachedFirmas: { nombre: string; url: string }[] = [];
 let lastFetch = 0;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+const CACHE_TTL_MS = 30 * 1000; // 30 segundos
 
 interface CloudinaryResource {
   public_id: string;

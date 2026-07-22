@@ -62,10 +62,15 @@ export async function POST(req: NextRequest) {
 
     const data = await res.json();
 
+    // Añadimos ?v=<timestamp> para romper el caché del navegador y CDN
+    // cuando se reemplaza una firma existente con el mismo public_id.
+    const cacheBuster = `?v=${timestamp}`;
+    const urlConCache = `${data.secure_url}${cacheBuster}`;
+
     return NextResponse.json({
       success: true,
       nombre: nombre.trim(),
-      url: data.secure_url,
+      url: urlConCache,
     });
   } catch (error: any) {
     console.error("Error en subir-firma:", error);

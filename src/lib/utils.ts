@@ -182,3 +182,59 @@ export function analizarConsecutivos(periodo: Periodo): Record<string, AlertaCon
 
   return resultados;
 }
+
+/** Conversión de un valor numérico a letras en español */
+export function numeroALetras(num: number): string {
+  if (isNaN(num) || num === 0) return "CERO";
+
+  const unidades = ["", "UN", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE"];
+  const decenas = ["", "DIEZ", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"];
+  const especiales: Record<number, string> = {
+    11: "ONCE", 12: "DOCE", 13: "TRECE", 14: "CATORCE", 15: "QUINCE",
+    16: "DIECISEIS", 17: "DIECISIETE", 18: "DIECIOCHO", 19: "DIECINUEVE",
+    21: "VEINTIUN", 22: "VEINTIDOS", 23: "VEINTITRES", 24: "VEINTICUATRO",
+    25: "VEINTICINCO", 26: "VEINTISEIS", 27: "VEINTISIETE", 28: "VEINTIOCHO", 29: "VEINTINUEVE"
+  };
+  const centenas = ["", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"];
+
+  function convertirGrupo(n: number): string {
+    if (n === 100) return "CIEN";
+    let res = "";
+    const c = Math.floor(n / 100);
+    const d = Math.floor((n % 100) / 10);
+    const u = n % 10;
+
+    res += centenas[c] + (c > 0 ? " " : "");
+    if (d === 1 && u > 0) {
+      res += (especiales[d * 10 + u] || "") + " ";
+      return res.trim();
+    } else if (d === 2 && u > 0) {
+      res += (especiales[d * 10 + u] || "") + " ";
+      return res.trim();
+    } else {
+      res += decenas[d] + (d > 0 && u > 0 ? " Y " : (d > 0 ? " " : ""));
+      res += unidades[u];
+    }
+    return res.trim();
+  }
+
+  let entero = Math.floor(Math.abs(num));
+  let letras = "";
+
+  if (entero >= 1000000) {
+    const millones = Math.floor(entero / 1000000);
+    letras += (millones === 1 ? "UN MILLON" : convertirGrupo(millones) + " MILLONES") + " ";
+    entero = entero % 1000000;
+  }
+  if (entero >= 1000) {
+    const miles = Math.floor(entero / 1000);
+    letras += (miles === 1 ? "MIL" : convertirGrupo(miles) + " MIL") + " ";
+    entero = entero % 1000;
+  }
+  if (entero > 0) {
+    letras += convertirGrupo(entero);
+  }
+
+  return letras.trim();
+}
+

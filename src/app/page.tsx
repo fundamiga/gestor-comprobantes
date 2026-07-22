@@ -9,6 +9,7 @@ import {
   ChevronRight,
   X,
   FileText,
+  FileSignature,
 } from "lucide-react";
 import Link from "next/link";
 import { useComprobantes } from "@/hooks/useComprobantes";
@@ -701,6 +702,26 @@ function Navbar({ onNuevoPeriodo }: { onNuevoPeriodo: () => void }) {
           }}
         >
           <FileText size={16} /> Crear Cuenta Cobro
+        </Link>
+        <Link
+          href="/crear-contrato"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            background: "#fff",
+            color: "#8b5cf6",
+            border: "1.5px solid #ddd6fe",
+            borderRadius: 12,
+            padding: "9px 18px",
+            cursor: "pointer",
+            fontWeight: 800,
+            fontSize: 12,
+            fontFamily: "inherit",
+            textDecoration: "none",
+          }}
+        >
+          <FileSignature size={16} /> Crear Contrato
         </Link>
         <button
           onClick={onNuevoPeriodo}
