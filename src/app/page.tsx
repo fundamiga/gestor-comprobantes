@@ -453,7 +453,7 @@ export default function Home() {
                 <span style={{ fontSize: 9, fontWeight: 800, background: "#7c3aed", color: "#fff", padding: "1px 7px", borderRadius: 99, textTransform: "uppercase", letterSpacing: "0.04em" }}>Biblioteca</span>
               </div>
               <p style={{ margin: 0, fontSize: 12, color: "#5f6368" }}>
-                Leyes, contratos, estatutos, resoluciones y certificados
+                📋 Actas Consejo Directivo · 🏛️ Actas de Asamblea · 📖 Libro Registro Asociados · ⚖️ Estatutos
               </p>
             </div>
             {/* Flecha */}

@@ -4,14 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { uid } from "@/lib/utils";
 
-// ── Categorías de documentos legales ──────────────────────────────────────────
+// ── Carpetas de documentos legales de Fundamiga ───────────────────────────────
 export const CATEGORIAS_LEGALES = [
-  { id: "legislacion",    label: "Legislación",         emoji: "📜", color: "#1a73e8", desc: "Leyes, decretos y normas aplicables" },
-  { id: "contratos",      label: "Contratos",           emoji: "📋", color: "#0d9488", desc: "Contratos vigentes y firmados" },
-  { id: "estatutos",      label: "Estatutos",           emoji: "🏛️", color: "#7c3aed", desc: "Estatutos y reglamentos internos" },
-  { id: "resoluciones",   label: "Resoluciones",        emoji: "⚖️", color: "#dc2626", desc: "Resoluciones y actos administrativos" },
-  { id: "certificados",   label: "Certificados",        emoji: "🎖️", color: "#d97706", desc: "Certificados de existencia, RUT, etc." },
-  { id: "otros",          label: "Otros",               emoji: "📁", color: "#64748b", desc: "Otros documentos legales" },
+  { id: "actas_consejo",   label: "Actas Consejo Directivo", emoji: "📋", color: "#1a73e8", desc: "Actas de reuniones del Consejo Directivo" },
+  { id: "actas_asamblea",  label: "Actas de Asamblea",        emoji: "🏛️", color: "#0d9488", desc: "Actas de las asambleas generales" },
+  { id: "libro_registro",  label: "Libro Registro Asociados", emoji: "📖", color: "#7c3aed", desc: "Registro de socios y asociados" },
+  { id: "estatutos",       label: "Estatutos",                emoji: "⚖️", color: "#dc2626", desc: "Estatutos y reglamentos internos" },
 ];
 
 export interface DocLegal {
