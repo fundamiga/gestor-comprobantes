@@ -872,6 +872,24 @@ export function TipoDocCard({
                                 <strong style={{ fontSize: 13, color: "#1f1f1f" }}>
                                   {grupo.nombre}
                                 </strong>
+                                {/* Chip con número consecutivo del archivo */}
+                                {numGrupo !== null && (
+                                  <span
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      background: esRepetido ? "#fee2e2" : "#f1f5f9",
+                                      color: esRepetido ? "#b91c1c" : "#475569",
+                                      borderRadius: 6,
+                                      padding: "1px 7px",
+                                      fontFamily: "monospace",
+                                      letterSpacing: "0.02em",
+                                      border: `1px solid ${esRepetido ? "#fca5a5" : "#e2e8f0"}`,
+                                    }}
+                                  >
+                                    #{numGrupo}
+                                  </span>
+                                )}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
