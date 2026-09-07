@@ -401,56 +401,71 @@ export function TipoDocCard({
         </div>
       )}
 
+      {/* ── Thumbnail de carpeta estilo Drive ─────────────────────────────── */}
+      <div
+        onClick={() => setAbierto(!abierto)}
+        style={{
+          height: 72,
+          background: `linear-gradient(150deg, ${tipo.color}20, ${tipo.color}08)`,
+          borderBottom: `1px solid ${tipo.color}25`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+          cursor: "pointer",
+          flexShrink: 0,
+        }}
+      >
+        {abierto
+          ? <FolderOpen size={36} style={{ color: tipo.color, opacity: 0.85 }} />
+          : tiene
+            ? <FolderCheck size={36} style={{ color: tipo.color, opacity: 0.85 }} />
+            : <Folder size={36} style={{ color: tipo.color, opacity: 0.45 }} />}
+
+        {/* Conteo de archivos — badge esquina izquierda */}
+        {tiene && (
+          <span style={{
+            position: "absolute", bottom: 6, left: 10,
+            fontSize: 9, fontWeight: 700,
+            color: tipo.color, background: `${tipo.color}18`,
+            padding: "1px 6px", borderRadius: 99,
+          }}>
+            {esPorParejas
+              ? `${todosGrupos.filter(g => g.archivos.length > 0).length} parejas`
+              : `${archivos.length} arch.`}
+          </span>
+        )}
+
+        {/* Badge de estado esquina derecha */}
+        {faltaParejaCritico && (
+          <span style={{ position: "absolute", top: 6, right: 8, fontSize: 8, fontWeight: 800, background: "#f59e0b", color: "#fff", padding: "1px 6px", borderRadius: 99 }}>
+            ⚠ INCOMPLETO
+          </span>
+        )}
+        {tiene && !faltaParejaCritico && (
+          <span style={{ position: "absolute", top: 6, right: 8, fontSize: 8, fontWeight: 800, background: "#10b981", color: "#fff", padding: "1px 6px", borderRadius: 99 }}>
+            ✓
+          </span>
+        )}
+      </div>
+
       {/* Header del card principal */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          padding: "16px 16px 12px 16px",
+          padding: "11px 14px 10px 14px",
           cursor: "pointer",
-          gap: 12,
+          gap: 8,
           userSelect: "none",
         }}
         onClick={() => setAbierto(!abierto)}
       >
-        <div
-          style={{
-            width: 44,
-            height: 40,
-            borderRadius: "6px 12px 12px 12px",
-            flexShrink: 0,
-            background: tiene ? `${tipo.color}15` : "#fffbea",
-            border: `1.5px solid ${tiene ? tipo.color : "#fcd34d"}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "all 0.2s",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
-            position: "relative",
-          }}
-        >
-          {abierto ? (
-            <FolderOpen size={22} style={{ color: tiene ? tipo.color : "#d97706" }} />
-          ) : tiene ? (
-            <FolderCheck size={22} style={{ color: tipo.color }} />
-          ) : (
-            <Folder size={22} style={{ color: "#d97706" }} />
-          )}
-          {tiene && (
-            <span
-              style={{
-                position: "absolute",
-                top: -3,
-                right: -3,
-                width: 9,
-                height: 9,
-                borderRadius: "50%",
-                background: "#10b981",
-                border: "2px solid #fff",
-              }}
-            />
-          )}
-        </div>
+        {/* Franja de color izquierda */}
+        <div style={{
+          width: 4, height: 36, borderRadius: 99,
+          background: tipo.color, flexShrink: 0, opacity: 0.8,
+        }} />
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>

@@ -297,48 +297,23 @@ export function VistaMes({
       </div>
 
       {/* Contenido */}
-      <div style={{ padding: "20px 24px", maxWidth: modoVista === "grid" ? 960 : 680, margin: "0 auto", transition: "max-width 0.25s ease" }}>
-        {/* Resumen del mes */}
+      <div style={{ padding: "16px 24px", maxWidth: modoVista === "grid" ? 1100 : 720, margin: "0 auto", transition: "max-width 0.25s ease" }}>
+        {/* Resumen del mes — chips compactos */}
         {periodo.lotes.length > 0 && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 10,
-              marginBottom: 20,
-            }}
-          >
+          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
             {[
-              { label: "Completos", valor: completos, color: "#10b981", bg: "#d1fae5" },
-              { label: "Incompletos", valor: incompletos, color: "#f59e0b", bg: "#fef3c7" },
-              { label: "Sin docs", valor: vacios, color: "#94a3b8", bg: "#f1f5f9" },
+              { label: "Completos", valor: completos, color: "#1e8e3e", bg: "#e6f4ea", dot: "#1e8e3e" },
+              { label: "Incompletos", valor: incompletos, color: "#b06000", bg: "#fef3c7", dot: "#f9ab00" },
+              { label: "Sin docs", valor: vacios, color: "#5f6368", bg: "#f1f3f4", dot: "#9aa0a6" },
             ].map((item) => (
-              <div
-                key={item.label}
-                style={{ background: item.bg, borderRadius: 14, padding: "13px 16px" }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 24,
-                    fontWeight: 900,
-                    color: item.color,
-                  }}
-                >
-                  {item.valor}
-                </p>
-                <p
-                  style={{
-                    margin: "2px 0 0",
-                    fontSize: 10,
-                    color: item.color,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                  }}
-                >
-                  {item.label}
-                </p>
+              <div key={item.label} style={{
+                display: "flex", alignItems: "center", gap: 7,
+                background: item.bg, borderRadius: 99,
+                padding: "5px 14px 5px 10px", border: `1px solid ${item.dot}30`,
+              }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.dot, display: "inline-block" }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: item.color }}>{item.valor}</span>
+                <span style={{ fontSize: 11, color: item.color, opacity: 0.8 }}>{item.label}</span>
               </div>
             ))}
           </div>
@@ -415,129 +390,67 @@ export function VistaMes({
             </p>
 
             {modoVista === "grid" ? (
-              /* VISTA CUADRÍCULA (GRID) ESTILO GOOGLE DRIVE */
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                  gap: 12,
-                }}
-              >
+              /* VISTA CUADRÍCULA — carpetas con thumbnail estilo Drive */
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(168px, 1fr))", gap: 8 }}>
                 {periodo.lotes.map((lote) => {
                   const estado = calcularEstadoLote(lote);
-                  const cargados = requeridos.filter(
-                    (t) => (lote.documentos[t.id] ?? []).length > 0
-                  ).length;
+                  const cargados = requeridos.filter((t) => (lote.documentos[t.id] ?? []).length > 0).length;
                   const totalArchivos = Object.values(lote.documentos).flat().length;
-
-                  const folderColor =
-                    estado === "completo"
-                      ? "#1e8e3e"
-                      : estado === "incompleto"
-                      ? "#f9ab00"
-                      : "#5f6368";
+                  const folderColor = estado === "completo" ? "#1e8e3e" : estado === "incompleto" ? "#f9ab00" : "#9aa0a6";
 
                   return (
                     <motion.div
                       key={lote.id}
                       className="drive-folder-card"
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
+                      whileHover={{ y: -1 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => setLoteAbierto(lote.id)}
-                      style={{
-                        padding: "14px 16px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 12,
+                      style={{ display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}
+                      onMouseEnter={(e) => {
+                        const btn = e.currentTarget.querySelector(".lote-del-btn") as HTMLElement | null;
+                        if (btn) btn.style.opacity = "1";
+                      }}
+                      onMouseLeave={(e) => {
+                        const btn = e.currentTarget.querySelector(".lote-del-btn") as HTMLElement | null;
+                        if (btn) btn.style.opacity = "0";
                       }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                          minWidth: 0,
-                          flex: 1,
-                        }}
-                      >
-                        <Folder
-                          size={32}
-                          style={{
-                            color: folderColor,
-                            fill: `${folderColor}24`,
-                            flexShrink: 0,
-                          }}
-                        />
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <p
-                            style={{
-                              margin: 0,
-                              fontWeight: 700,
-                              fontSize: 13,
-                              color: "#1f1f1f",
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            {lote.proveedor}
-                          </p>
-                          <p
-                            style={{
-                              margin: "2px 0 0",
-                              fontSize: 11,
-                              color: "#5f6368",
-                            }}
-                          >
-                            {cargados}/{requeridos.length} req · {totalArchivos} archivo{totalArchivos !== 1 ? "s" : ""}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          flexShrink: 0,
-                        }}
-                      >
-                        <EstadoBadge estado={estado} size="sm" />
+                      {/* Thumbnail */}
+                      <div style={{
+                        height: 76,
+                        background: `linear-gradient(150deg, ${folderColor}18, ${folderColor}06)`,
+                        borderBottom: `1px solid ${folderColor}20`,
+                        display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
+                      }}>
+                        <Folder size={38} style={{ color: folderColor, fill: `${folderColor}28` }} />
+                        {estado === "completo" && (
+                          <span style={{ position: "absolute", top: 6, right: 6, background: "#1e8e3e", color: "#fff", fontSize: 8, fontWeight: 800, padding: "1px 5px", borderRadius: 99 }}>✓</span>
+                        )}
+                        {estado === "incompleto" && (
+                          <span style={{ position: "absolute", top: 6, right: 6, background: "#f9ab00", color: "#fff", fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 99 }}>!</span>
+                        )}
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (
-                              confirm(
-                                `¿Eliminar el lote "${lote.proveedor}"? Se perderán todos sus archivos.`
-                              )
-                            ) {
-                              onEliminarLote(lote.id);
-                            }
-                          }}
+                          className="lote-del-btn"
+                          onClick={(e) => { e.stopPropagation(); if (confirm(`¿Eliminar "${lote.proveedor}"? Se perderán todos sus archivos.`)) onEliminarLote(lote.id); }}
                           title="Eliminar lote"
-                          style={{
-                            background: "transparent",
-                            border: "none",
-                            cursor: "pointer",
-                            padding: "6px",
-                            color: "#94a3b8",
-                            borderRadius: 6,
-                            display: "flex",
-                            alignItems: "center",
-                            transition: "all 0.15s",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.color = "#ef4444";
-                            e.currentTarget.style.background = "#fee2e2";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.color = "#94a3b8";
-                            e.currentTarget.style.background = "transparent";
-                          }}
+                          style={{ position: "absolute", top: 5, left: 5, opacity: 0, width: 24, height: 24, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.07)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "opacity 0.15s, background 0.12s", color: "#5f6368" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.color = "#ef4444"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.07)"; e.currentTarget.style.color = "#5f6368"; }}
                         >
-                          <Trash2 size={15} />
+                          <Trash2 size={12} />
                         </button>
+                      </div>
+                      {/* Info */}
+                      <div style={{ padding: "9px 11px 10px" }}>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: 12.5, color: "#202124", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {lote.proveedor}
+                        </p>
+                        {lote.referencia && (
+                          <p style={{ margin: "1px 0 0", fontSize: 10.5, color: "#5f6368", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lote.referencia}</p>
+                        )}
+                        <p style={{ margin: "3px 0 0", fontSize: 10, color: "#9aa0a6" }}>
+                          {cargados}/{requeridos.length} tipos · {totalArchivos} arch.
+                        </p>
                       </div>
                     </motion.div>
                   );

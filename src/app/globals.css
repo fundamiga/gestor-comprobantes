@@ -1,192 +1,238 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #f8f9fa;
+  --foreground: #202124;
   --verde: #10b981;
   --verde-claro: #d1fae5;
   --amarillo: #f59e0b;
   --amarillo-claro: #fef3c7;
+  --drive-blue: #1a73e8;
+  --drive-hover: #e8f0fe;
+  --drive-border: #dadce0;
+  --drive-text: #202124;
+  --drive-secondary: #5f6368;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: "Google Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
-/* Scrollbar sutil y personalizada */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 99px;
-  border: 2px solid #f1f5f9;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
+/* ── Scrollbar sutil ───────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #dadce0; border-radius: 99px; border: 2px solid var(--background); }
+::-webkit-scrollbar-thumb:hover { background: #bdc1c6; }
+.custom-scrollbar { scrollbar-width: thin; scrollbar-color: #dadce0 transparent; }
 
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
-}
-
-/* Transiciones de página */
+/* ── Animaciones ────────────────────────────────────────────────────────────── */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+.animate-fade-in { animation: fadeIn 0.2s ease both; }
 
-.animate-fade-in {
-  animation: fadeIn 0.25s ease both;
+@keyframes ia-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(249,115,22,0.5); }
+  50%      { box-shadow: 0 0 0 8px rgba(249,115,22,0); }
 }
+.ia-highlighted { animation: ia-pulse 1.4s ease-in-out infinite; }
 
-/* ── Estilos de Carpetas tipo Windows Explorer ── */
-.win-folder-card {
-  position: relative;
-  border-radius: 0 16px 16px 16px;
-  background: #ffffff;
-  border: 2px solid #e2e8f0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  margin-top: 14px;
-}
-
-.win-folder-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-}
-
-.win-folder-tab {
-  position: absolute;
-  top: -14px;
-  left: -2px;
-  height: 16px;
-  padding: 0 16px;
-  border-radius: 10px 10px 0 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border-top: 2px solid;
-  border-left: 2px solid;
-  border-right: 2px solid;
-  z-index: 2;
-}
-
-.win-subfolder {
-  background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
-  border-left: 5px solid #f59e0b;
-  border-radius: 12px;
-  transition: all 0.2s ease;
-}
-
-.win-subfolder:hover {
-  border-color: #cbd5e1;
-  border-left-color: #d97706;
-  background: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.win-address-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #334155;
-  font-family: "Segoe UI", system-ui, sans-serif;
-}
-
-/* ── Estilos de Carpeta tipo Google Drive ── */
+/* ── Carpeta tipo Google Drive — card principal ─────────────────────────────── */
 .drive-folder-card {
   background: #ffffff;
-  border: 1px solid #dadce0;
-  border-radius: 14px;
-  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
-  user-select: none;
+  border: 1px solid var(--drive-border);
+  border-radius: 12px;
+  transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   cursor: pointer;
-  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.05);
+  overflow: hidden;
 }
-
 .drive-folder-card:hover {
-  background: #f0f4f9;
+  background: #f8f9fa;
   border-color: #bdc1c6;
-  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.2), 0 4px 8px 3px rgba(60, 64, 67, 0.1);
-  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(60,64,67,0.15), 0 1px 2px rgba(60,64,67,0.08);
 }
 
+/* ── Subfolder (pareja) ─────────────────────────────────────────────────────── */
+.drive-subfolder {
+  background: #ffffff;
+  border: 1px solid var(--drive-border);
+  border-radius: 10px;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  overflow: hidden;
+}
+.drive-subfolder:hover {
+  background: #f8f9fa;
+  border-color: #c4c7cc;
+  box-shadow: 0 1px 4px rgba(60,64,67,0.12);
+}
+
+/* ── Fila de archivo estilo Drive ───────────────────────────────────────────── */
+.drive-file-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  transition: background 0.12s ease;
+  cursor: default;
+}
+.drive-file-row:hover {
+  background: var(--drive-hover);
+}
+.drive-file-row:hover .drive-file-actions {
+  opacity: 1;
+}
+.drive-file-actions {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ── Pill button ────────────────────────────────────────────────────────────── */
 .drive-pill-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   background: #ffffff;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--drive-border);
   border-radius: 24px;
   padding: 8px 18px;
   font-size: 13px;
-  font-weight: 700;
-  color: #1f1f1f;
+  font-weight: 600;
+  color: var(--drive-text);
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.15);
-  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(60,64,67,0.1);
+  transition: background 0.15s, box-shadow 0.15s;
+  font-family: inherit;
 }
-
 .drive-pill-btn:hover {
   background: #f8fafd;
-  box-shadow: 0 2px 6px rgba(60, 64, 67, 0.22);
+  box-shadow: 0 2px 6px rgba(60,64,67,0.18);
 }
 
+/* ── Breadcrumb ─────────────────────────────────────────────────────────────── */
 .drive-breadcrumb {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   font-size: 14px;
-  color: #444746;
-  font-weight: 600;
+  color: var(--drive-secondary);
+  font-weight: 500;
 }
-
 .drive-breadcrumb-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   padding: 4px 8px;
   border-radius: 8px;
-  transition: background 0.15s;
+  transition: background 0.12s;
   cursor: pointer;
+  font-size: 14px;
+  color: var(--drive-secondary);
 }
+.drive-breadcrumb-item:hover { background: #f0f4f9; }
 
-.drive-breadcrumb-item:hover {
-  background: #f0f4f9;
+/* ── Botón ícono (acción) ───────────────────────────────────────────────────── */
+.drive-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--drive-secondary);
+  transition: background 0.12s;
 }
+.drive-icon-btn:hover { background: #f0f4f9; }
 
-.drive-subfolder {
+/* ── Vista cuadrícula / lista ───────────────────────────────────────────────── */
+.drive-view-toggle {
+  display: inline-flex;
+  background: #f1f3f4;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+.drive-view-toggle button {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+  color: var(--drive-secondary);
+  display: flex;
+  align-items: center;
+  transition: background 0.12s;
+}
+.drive-view-toggle button.active {
   background: #ffffff;
-  border: 1px solid #dadce0;
-  border-radius: 14px;
-  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.06);
-  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
-  overflow: hidden;
+  color: var(--drive-blue);
+  box-shadow: 0 1px 3px rgba(60,64,67,0.15);
+}
+.drive-view-toggle button:hover:not(.active) { background: #e8eaed; }
+
+/* ── Sección título ─────────────────────────────────────────────────────────── */
+.drive-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--drive-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 8px 2px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.drive-subfolder:hover {
-  border-color: #bdc1c6;
-  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.15), 0 3px 6px 1px rgba(60, 64, 67, 0.08);
+/* ── Badge de estado ────────────────────────────────────────────────────────── */
+.drive-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-
+/* ── Windows legacy (no borrar por compatibilidad) ──────────────────────────── */
+.win-folder-card {
+  position: relative;
+  border-radius: 0 16px 16px 16px;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+  margin-top: 14px;
+}
+.win-folder-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+.win-folder-tab {
+  position: absolute;
+  top: -14px; left: -2px;
+  height: 16px; padding: 0 16px;
+  border-radius: 10px 10px 0 0;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+  border-top: 2px solid; border-left: 2px solid; border-right: 2px solid;
+  z-index: 2;
+}
+.win-subfolder {
+  background: #f8fafc; border: 1.5px solid #e2e8f0;
+  border-left: 5px solid #f59e0b; border-radius: 12px; transition: all 0.2s ease;
+}
+.win-subfolder:hover { border-color: #cbd5e1; border-left-color: #d97706; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+.win-address-bar {
+  display: flex; align-items: center; gap: 8px;
+  background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 10px;
+  padding: 6px 12px; font-size: 12px; font-weight: 600; color: #334155;
+}
