@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send, Loader2, Download, Bot, User } from "lucide-react";
@@ -120,7 +120,7 @@ export function ChatAsistente() {
       const msgErr: Mensaje = {
         id: Date.now().toString() + "_e",
         rol: "assistant",
-        texto: "❌ Error al conectar con el asistente. Verifica tu conexión.",
+        texto: `❌ Error: ${err.message || "No se pudo conectar con el asistente."}`,
       };
       setMensajes((prev) => [...prev, msgErr]);
     } finally {

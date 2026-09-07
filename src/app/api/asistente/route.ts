@@ -3,10 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 const GEMINI_MODELS = [
-  "gemini-2.5-flash-lite",
-  "gemini-2.0-flash-lite",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-latest",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-lite-latest",
+  "gemini-3.5-flash-lite",
 ];
 
 const SYSTEM_PROMPT = `Eres "Amiga IA", la asistente inteligente del Gestor de Comprobantes de Fundamiga (Fundación Una Mano Amiga a Tiempo).
@@ -32,10 +31,10 @@ PARA GENERAR CUENTA DE COBRO necesitas extraer del mensaje:
 - valor: monto en pesos colombianos (número entero)
 - concepto: descripción del servicio prestado
 
-Cuando detectes que el usuario quiere generar una cuenta de cobro, responde EXACTAMENTE en este formato JSON (sin markdown, sin texto adicional):
+Cuando tengas los 3 datos requeridos (nombre, valor y concepto), responde EXACTAMENTE en este formato JSON (sin markdown, sin texto adicional):
 {"accion":"generar_cuenta","nombre":"NOMBRE COMPLETO","valor":000000,"concepto":"descripción del concepto"}
 
-Si falta algún dato, pregunta por él antes de responder con ese JSON.
+Si falta el valor o el concepto, sé amable y pregúntale al usuario por el dato que falta para poder generar el documento.
 
 REGLAS:
 - Responde siempre en español colombiano, claro y profesional.
@@ -56,6 +55,16 @@ export async function POST(req: NextRequest) {
     // Construir historial de mensajes para Gemini
     const contents: { role: string; parts: { text: string }[] }[] = [];
 
+    // Incluir instrucciones base al inicio de la conversación
+    contents.push({
+      role: "user",
+      parts: [{ text: `[INSTRUCCIONES DEL SISTEMA:\n${SYSTEM_PROMPT}\n]` }],
+    });
+    contents.push({
+      role: "model",
+      parts: [{ text: "Entendido. Soy Amiga IA y seguiré todas las instrucciones al pie de la letra." }],
+    });
+
     if (historial && Array.isArray(historial)) {
       for (const msg of historial) {
         contents.push({
@@ -68,7 +77,6 @@ export async function POST(req: NextRequest) {
     contents.push({ role: "user", parts: [{ text: mensaje }] });
 
     const payload = {
-      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
       contents,
       generationConfig: {
         temperature: 0.2,
@@ -112,44 +120,70 @@ export async function POST(req: NextRequest) {
       try {
         const accion = JSON.parse(jsonMatch[0]);
         if (accion.accion === "generar_cuenta") {
-          // Buscar cédula del proveedor en Supabase
+          let nombreFinal = accion.nombre;
           let cedula = "Por definir";
+
+          // 1. Buscar proveedor en Supabase con coincidencia flexible por palabras
           try {
-            const sbRes = await fetch(
-              `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/proveedores?nombre=ilike.%25${encodeURIComponent(accion.nombre)}%25&select=nombre,cedula&limit=1`,
-              {
-                headers: {
-                  apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-                  Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""}`,
-                },
-              }
-            );
+            const palabras = accion.nombre.trim().split(/\s+/).filter((p: string) => p.length > 1);
+            const patron = palabras.map((p: string) => encodeURIComponent(p)).join("%25");
+            const sbUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/proveedores?nombre=ilike.%25${patron}%25&select=nombre,cedula&limit=1`;
+            
+            const sbRes = await fetch(sbUrl, {
+              headers: {
+                apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+                Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""}`,
+              },
+            });
             const sbData = await sbRes.json();
-            if (sbData?.[0]?.cedula) cedula = sbData[0].cedula;
+            if (sbData?.[0]) {
+              if (sbData[0].nombre) nombreFinal = sbData[0].nombre;
+              if (sbData[0].cedula) cedula = sbData[0].cedula;
+            }
           } catch (e) {
             console.warn("No se pudo consultar Supabase para la cédula:", e);
           }
 
-          // Buscar firma en Cloudinary
+          // 2. Buscar firma en Cloudinary (probando tanto el nombre oficial como el escrito)
           let firmaUrl: string | null = null;
-          try {
-            const origen = req.nextUrl.origin || "http://localhost:3000";
-            const firmRes = await fetch(
-              `${origen}/api/buscar-firma?nombre=${encodeURIComponent(accion.nombre)}`
-            );
-            if (firmRes.ok) {
-              const firmData = await firmRes.json();
-              if (firmData.firmaUrl) firmaUrl = firmData.firmaUrl;
+          const nombresABuscar = Array.from(new Set([nombreFinal, accion.nombre]));
+          const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME_FIRMAS || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "ddbti1112";
+          const subCarpetas = ["trabajadors", "supervisors", "responsable_conteos", ""];
+
+          for (const nom of nombresABuscar) {
+            if (firmaUrl) break;
+            const variantes = [
+              nom.trim(),
+              nom.trim().replace(/\s+/g, '_'),
+              nom.trim().toLowerCase().replace(/\s+/g, '_'),
+              nom.trim().replace(/\s+/g, '-'),
+              nom.trim().toLowerCase().replace(/\s+/g, '-')
+            ];
+
+            for (const sc of subCarpetas) {
+              if (firmaUrl) break;
+              const sub = sc ? `${sc}/` : "";
+              for (const v of variantes) {
+                if (firmaUrl) break;
+                for (const ext of ["png", "jpg", "jpeg"]) {
+                  const urlPrueba = `https://res.cloudinary.com/${cloudName}/image/upload/firmas/${sub}${encodeURIComponent(v)}.${ext}`;
+                  try {
+                    const checkRes = await fetch(urlPrueba, { method: "HEAD" });
+                    if (checkRes.ok) {
+                      firmaUrl = urlPrueba;
+                      break;
+                    }
+                  } catch (e) {}
+                }
+              }
             }
-          } catch (e) {
-            console.warn("No se pudo buscar firma:", e);
           }
 
           return NextResponse.json({
             tipo: "cuenta_cobro",
-            mensaje: `✅ Encontré los datos de **${accion.nombre}**. Voy a generar la cuenta de cobro ahora...`,
+            mensaje: `✅ Datos encontrados para **${nombreFinal}** (C.C. ${cedula}). Generando cuenta de cobro por **$${Number(accion.valor).toLocaleString('es-CO')}**...`,
             datos: {
-              nombre: accion.nombre,
+              nombre: nombreFinal,
               cedula,
               valor: accion.valor,
               concepto: accion.concepto,
