@@ -44,7 +44,7 @@ interface DatosCuenta {
 }
 
 export function ChatAsistente() {
-  const { periodos, periodoActivoId, alertasConsecutivos, navegarA } = useAsistenteContext();
+  const { periodos, periodoActivoId, alertasConsecutivos, navegarA, setHighlight } = useAsistenteContext();
 
   const [abierto, setAbierto] = useState(false);
   const [mensajes, setMensajes] = useState<Mensaje[]>([
@@ -498,6 +498,25 @@ export function ChatAsistente() {
             <button
               key={bi}
               onClick={() => {
+                // Detectar tipo de problema para el highlight visual
+                const textoLimpio = linea.replace(/\*\*/g, "").replace(/\*/g, "").trim();
+                const tipoProblem: "pareja_incompleta" | "consecutivo" | "tipo_faltante" | "general" =
+                  /hu[eé]rfan[ao]|pareja|incompleto?/i.test(linea) ? "pareja_incompleta" :
+                  /salto|consecutiv|falt[ae]\s+#?\d|gap|\d{4}.*\d{4}/i.test(linea) ? "consecutivo" :
+                  /falt[ae]\s+(el\s+)?tipo|falt[ae]\s+(la\s+)?carpeta/i.test(linea) ? "tipo_faltante" : "general";
+
+                // Extraer nombre del proveedor/grupo si existe en el boton
+                const grupoNombre = b.loteId
+                  ? periodos.flatMap(p => p.lotes).find(l => l.id === b.loteId)?.proveedor
+                  : undefined;
+
+                setHighlight({
+                  tipoId: b.tipoId,
+                  loteId: b.loteId,
+                  grupoNombre,
+                  mensaje: textoLimpio.length > 120 ? textoLimpio.slice(0, 117) + "…" : textoLimpio,
+                  tipo: tipoProblem,
+                });
                 navegarA(b.loteId, b.tipoId, b.periodoId);
                 setAbierto(false);
               }}

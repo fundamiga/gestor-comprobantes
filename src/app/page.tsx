@@ -205,8 +205,18 @@ export default function Home() {
   const [periodoAbierto, setPeriodoAbierto] = useState<string | null>(null);
   const [loteNavegandoId, setLoteNavegandoId] = useState<string | null>(null);
   const [tipoNavegandoId, setTipoNavegandoId] = useState<string | null>(null);
+  const [highlightInfo, setHighlightInfo] = useState<import("@/lib/asistente-context").HighlightInfo | null>(null);
   const [modalPeriodo, setModalPeriodo] = useState(false);
   const [modoVista, setModoVista] = useState<"grid" | "list">("grid");
+
+  const handleSetHighlight = useCallback((info: import("@/lib/asistente-context").HighlightInfo | null) => {
+    setHighlightInfo(info);
+    if (info) {
+      // Se borra automáticamente después de 8 segundos
+      const t = setTimeout(() => setHighlightInfo(null), 8000);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   // Abrir o crear período
   const handleAbrirPeriodo = async (mes: number, anio: number) => {
@@ -279,7 +289,9 @@ export default function Home() {
           periodos={periodos}
           periodoActivoId={periodoAbierto}
           alertasConsecutivos={alertasParaChat}
+          highlightInfo={highlightInfo}
           onNavegar={handleNavegarDesdeChat}
+          onSetHighlight={handleSetHighlight}
         >
           <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
             <Navbar onNuevoPeriodo={() => setModalPeriodo(true)} />
@@ -329,7 +341,9 @@ export default function Home() {
       periodos={periodos}
       periodoActivoId={null}
       alertasConsecutivos={[]}
+      highlightInfo={highlightInfo}
       onNavegar={handleNavegarDesdeChat}
+      onSetHighlight={handleSetHighlight}
     >
     <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
       {modalPeriodo && (

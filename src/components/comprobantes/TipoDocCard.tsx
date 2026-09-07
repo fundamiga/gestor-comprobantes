@@ -1,7 +1,7 @@
 "use client";
 // Force Vercel redeploy - Triggering 10:55 AM
 
-import { useState, useRef, useCallback, Fragment } from "react";
+import { useState, useRef, useCallback, useEffect, Fragment } from "react";
 import {
   FileText,
   CheckCircle,
@@ -23,6 +23,7 @@ import {
 import { Reorder } from "framer-motion";
 import type { ArchivoSubido, TipoDocumento } from "@/types";
 import { ZonaUpload } from "./ZonaUpload";
+import { useAsistenteContext } from "@/lib/asistente-context";
 
 interface TipoDocCardProps {
   tipo: TipoDocumento;
@@ -53,6 +54,7 @@ export function TipoDocCard({
   alertaConsecutivo,
   defaultOpen,
 }: TipoDocCardProps) {
+  const { highlightInfo } = useAsistenteContext();
   const [abierto, setAbierto] = useState(defaultOpen ?? false);
   const [gruposVacios, setGruposVacios] = useState<{ id: string; nombre: string }[]>([]);
   const [renombrandoId, setRenombrandoId] = useState<string | null>(null);
@@ -62,6 +64,20 @@ export function TipoDocCard({
   const [numeroSiguiente, setNumeroSiguiente] = useState<string>("");
   const [guardadoOk, setGuardadoOk] = useState(false);
   const [parejasAbiertas, setParejasAbiertas] = useState<{ [grupoId: string]: boolean }>({});
+  const [tooltipGrupoId, setTooltipGrupoId] = useState<string | null>(null);
+
+  // ── Auto-scroll + auto-open cuando la IA resalta esta tarjeta ────────────
+  useEffect(() => {
+    if (!highlightInfo || highlightInfo.tipoId !== tipo.id) return;
+    // Abrir el card si está cerrado
+    setAbierto(true);
+    // Scroll al elemento después de un pequeño delay (para que se renderice)
+    const t = setTimeout(() => {
+      const el = document.getElementById(`tipo-${tipo.id}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 200);
+    return () => clearTimeout(t);
+  }, [highlightInfo, tipo.id]);
 
   const toggleParejaAbierta = (id: string) => {
     setParejasAbiertas((prev) => ({
@@ -350,14 +366,40 @@ export function TipoDocCard({
       id={`tipo-${tipo.id}`}
       className="drive-folder-card"
       style={{
-        border: `1.5px solid ${tiene ? tipo.color + "45" : "#dadce0"}`,
+        border: (highlightInfo?.tipoId === tipo.id)
+          ? "2px solid #f97316"
+          : `1.5px solid ${tiene ? tipo.color + "45" : "#dadce0"}`,
         borderRadius: 16,
         background: "#ffffff",
         overflow: "hidden",
-        boxShadow: "0 1px 3px rgba(60,64,67,0.08)",
+        boxShadow: (highlightInfo?.tipoId === tipo.id)
+          ? "0 0 0 4px rgba(249,115,22,0.15), 0 1px 3px rgba(60,64,67,0.08)"
+          : "0 1px 3px rgba(60,64,67,0.08)",
         cursor: "default",
+        transition: "border 0.3s, box-shadow 0.3s",
       }}
     >
+      {/* ── Banner de la IA para alerta de tipo completo (ej: consecutivos) ── */}
+      {highlightInfo?.tipoId === tipo.id && !highlightInfo.grupoNombre && highlightInfo.mensaje && (
+        <div style={{
+          background: "linear-gradient(135deg, #fff7ed, #ffedd5)",
+          borderBottom: "1.5px solid #f97316",
+          padding: "10px 16px",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10,
+        }}>
+          <span style={{ fontSize: 16 }}>
+            {highlightInfo.tipo === "consecutivo" ? "🔢" : highlightInfo.tipo === "tipo_faltante" ? "📁" : "⚠️"}
+          </span>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#c2410c", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>
+              {highlightInfo.tipo === "consecutivo" ? "Alerta de consecutivos · Amiga IA" : "Amiga IA detectó"}
+            </div>
+            <div style={{ fontSize: 12, color: "#7c2d12", lineHeight: 1.5 }}>{highlightInfo.mensaje}</div>
+          </div>
+        </div>
+      )}
 
       {/* Header del card principal */}
       <div
@@ -765,20 +807,93 @@ export function TipoDocCard({
                     }
                   }
 
-                  return (
+                  return (() => {
+                    // ── Highlight de la IA ───────────────────────────────────
+                    const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    const esHighlighted = highlightInfo &&
+                      highlightInfo.tipoId === tipo.id &&
+                      highlightInfo.grupoNombre &&
+                      norm(grupo.nombre).includes(norm(highlightInfo.grupoNombre.split(" ")[0]));
+
+                    const colorBorde = esHighlighted
+                      ? "#f97316"
+                      : gFaltaPareja ? "#fde68a" : count >= 2 ? "#bbf7d0" : "#dadce0";
+
+                    return (
                     <Fragment key={grupo.id}>
+                      <style>{`
+                        @keyframes ia-pulse {
+                          0%,100% { box-shadow: 0 0 0 0 rgba(249,115,22,0.5); }
+                          50%      { box-shadow: 0 0 0 8px rgba(249,115,22,0); }
+                        }
+                        .ia-highlighted { animation: ia-pulse 1.4s ease-in-out infinite; }
+                      `}</style>
                       <Reorder.Item
                         key={grupo.id}
                         value={grupo.id}
-                        className="drive-subfolder"
+                        className={`drive-subfolder${esHighlighted ? " ia-highlighted" : ""}`}
                         style={{
-                          border: `1px solid ${gFaltaPareja ? "#fde68a" : count >= 2 ? "#bbf7d0" : "#dadce0"}`,
+                          border: `${esHighlighted ? 2 : 1}px solid ${colorBorde}`,
                           borderRadius: 14,
-                          background: "#ffffff",
+                          background: esHighlighted ? "#fff7ed" : "#ffffff",
                           position: "relative",
-                          boxShadow: "0 1px 3px rgba(60,64,67,0.06)",
+                          boxShadow: esHighlighted
+                            ? "0 0 0 3px rgba(249,115,22,0.15)"
+                            : "0 1px 3px rgba(60,64,67,0.06)",
                         }}
                       >
+                        {/* ── Tooltip/popover de la IA ─────────────────────── */}
+                        {esHighlighted && highlightInfo?.mensaje && (
+                          <div
+                            style={{
+                              position: "relative",
+                              margin: "0 12px",
+                              marginTop: 10,
+                              background: "linear-gradient(135deg, #fff7ed, #ffedd5)",
+                              border: "1.5px solid #f97316",
+                              borderRadius: 10,
+                              padding: "10px 14px",
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 8,
+                              boxShadow: "0 2px 8px rgba(249,115,22,0.15)",
+                              zIndex: 10,
+                            }}
+                          >
+                            {/* Triángulo apuntando hacia arriba */}
+                            <div style={{
+                              position: "absolute",
+                              top: -9,
+                              left: 20,
+                              width: 0,
+                              height: 0,
+                              borderLeft: "8px solid transparent",
+                              borderRight: "8px solid transparent",
+                              borderBottom: "9px solid #f97316",
+                            }} />
+                            <div style={{ fontSize: 16, flexShrink: 0 }}>
+                              {highlightInfo?.tipo === "pareja_incompleta" ? "📂" :
+                               highlightInfo?.tipo === "consecutivo" ? "🔢" : "⚠️"}
+                            </div>
+                            <div>
+                              <div style={{
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: "#c2410c",
+                                marginBottom: 2,
+                                textTransform: "uppercase",
+                                letterSpacing: 0.5,
+                              }}>
+                                {highlightInfo?.tipo === "pareja_incompleta" ? "Pareja incompleta" :
+                                 highlightInfo?.tipo === "consecutivo" ? "Salto consecutivo" :
+                                 "Amiga IA detectó"}
+                              </div>
+                              <div style={{ fontSize: 12, color: "#7c2d12", lineHeight: 1.5 }}>
+                                {highlightInfo.mensaje}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         {/* Cabecera de la Pareja estilo Carpeta Google Drive */}
                         <div
                           style={{
@@ -1202,7 +1317,8 @@ export function TipoDocCard({
                         </button>
                       </div>
                     </Fragment>
-                  );
+                    );
+                  })();
                 })}
               </Reorder.Group>
 
