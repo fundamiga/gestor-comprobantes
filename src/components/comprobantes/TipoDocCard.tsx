@@ -164,15 +164,15 @@ export function TipoDocCard({
   };
 
   // Ordenar grupos usando grupoOrden (posición guardada explícitamente por el usuario al arrastrar).
-  // Si ningún archivo tiene grupoOrden (datos viejos), se toma el orden natural del array.
+  // Si ningún archivo tiene grupoOrden (nuevo upload), ordenar por el número consecutivo del archivo.
   if (esPorParejas) {
     todosGrupos.sort((a, b) => {
       const ordenA = a.archivos.length > 0 ? (a.archivos[0].grupoOrden ?? Infinity) : Infinity;
       const ordenB = b.archivos.length > 0 ? (b.archivos[0].grupoOrden ?? Infinity) : Infinity;
-      // Si ambos tienen grupoOrden definido, comparar por él
+      // Si alguno tiene grupoOrden guardado, comparar por él
       if (ordenA !== Infinity || ordenB !== Infinity) return ordenA - ordenB;
-      // Fallback para datos viejos sin grupoOrden: no ordenar (mantener orden del array)
-      return 0;
+      // Fallback: ordenar por el número extraído del nombre del archivo (consecutivo automático)
+      return extraerNumero(a) - extraerNumero(b);
     });
   }
 
