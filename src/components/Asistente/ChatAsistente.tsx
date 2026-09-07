@@ -421,19 +421,113 @@ export function ChatAsistente() {
     }
   };
 
-  const renderTexto = (texto: string) =>
-    texto.split("\n").map((linea, i) => (
-      <span key={i}>
-        <span
-          dangerouslySetInnerHTML={{
-            __html: linea
-              .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-              .replace(/\*(.+?)\*/g, "<em>$1</em>"),
-          }}
-        />
-        {i < texto.split("\n").length - 1 && <br />}
-      </span>
-    ));
+  // ── Renderizador inteligente: detecta lotes/tipos en el texto y agrega botones "Ir →" ─────
+  const tipoNavMap: { regex: RegExp; id: string }[] = [
+    { regex: /\bds\b|\bdocumento[\s-]?soporte\b/i, id: "DS" },
+    { regex: /\bcc[-\s]?9\b|\bcausaci[oó]n\b/i, id: "CC9" },
+    { regex: /\bcc[-\s]?6\b|\begreso\b/i, id: "CC6" },
+    { regex: /\bcc[-\s]?10\b|\baprobaci[oó]n\b|\bautorizaci[oó]n\b/i, id: "CC10" },
+    { regex: /\bfv\b|\bfactura\b/i, id: "FV" },
+    { regex: /\bcc[-\s]?11\b/i, id: "CC11" },
+    { regex: /\bconciliaci[oó]n\b/i, id: "BANC_CONCIL" },
+    { regex: /\bingreso\b/i, id: "ING" },
+    { regex: /\btraslado\b/i, id: "TD" },
+  ];
+
+  const extraerBotonesDeLínea = (linea: string): { loteId?: string; tipoId?: string; periodoId?: string; label: string }[] => {
+    const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const t = norm(linea);
+    const botones: { loteId?: string; tipoId?: string; periodoId?: string; label: string }[] = [];
+
+    // Detectar tipo de documento mencionado en la línea
+    let tipoEnLinea: string | undefined;
+    for (const entry of tipoNavMap) {
+      if (entry.regex.test(linea)) { tipoEnLinea = entry.id; break; }
+    }
+
+    // Detectar nombres de lotes (proveedores) mencionados en la línea
+    const todosLotes = periodos.flatMap((p) => p.lotes.map((l) => ({ ...l, periodoId: p.id })));
+    const lotesDetectados: typeof todosLotes = [];
+    for (const lote of todosLotes) {
+      const palabras = norm(lote.proveedor).split(/\s+/).filter((w) => w.length >= 4);
+      const coincide = palabras.some((p) => t.includes(p));
+      if (coincide) lotesDetectados.push(lote);
+    }
+
+    if (lotesDetectados.length > 0) {
+      for (const lote of lotesDetectados.slice(0, 2)) {
+        const tipoDef = tipoEnLinea ? TIPOS_DOCUMENTO.find((td) => td.id === tipoEnLinea) : null;
+        botones.push({
+          loteId: lote.id,
+          tipoId: tipoEnLinea,
+          periodoId: lote.periodoId,
+          label: tipoDef ? `${lote.proveedor} › ${tipoDef.label}` : lote.proveedor,
+        });
+      }
+    } else if (tipoEnLinea) {
+      // Solo menciona tipo, sin lote específico → ir al tipo en período activo
+      const tipoDef = TIPOS_DOCUMENTO.find((td) => td.id === tipoEnLinea);
+      const pId = periodoActivoId || periodos[periodos.length - 1]?.id;
+      if (pId) {
+        botones.push({
+          tipoId: tipoEnLinea,
+          periodoId: pId,
+          label: tipoDef?.label || tipoEnLinea,
+        });
+      }
+    }
+
+    return botones;
+  };
+
+  const renderTexto = (texto: string, esAssistant = false) => {
+    const lineas = texto.split("\n");
+    return lineas.map((linea, i) => {
+      const html = linea
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.+?)\*/g, "<em>$1</em>");
+
+      // Solo agregar botones en mensajes del asistente con contenido de error/problema
+      const esLineaProblema = esAssistant && /\bfalt[ae]\b|\bincompleto?\b|\bhu[eé]rfan[ao]\b|\bsalto\b|\bgap\b|\brepetid[ao]\b|\berror\b|\bproblem\b|\bcarece\b|\bmissing\b/i.test(linea);
+      const botones = esLineaProblema ? extraerBotonesDeLínea(linea) : [];
+
+      return (
+        <span key={i} style={{ display: "inline" }}>
+          <span dangerouslySetInnerHTML={{ __html: html }} />
+          {botones.map((b, bi) => (
+            <button
+              key={bi}
+              onClick={() => {
+                navegarA(b.loteId, b.tipoId, b.periodoId);
+                setAbierto(false);
+              }}
+              title={`Ir a: ${b.label}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 3,
+                marginLeft: 6,
+                background: "#1a73e8",
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                padding: "2px 8px",
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                verticalAlign: "middle",
+                boxShadow: "0 1px 4px rgba(26,115,232,0.3)",
+              }}
+            >
+              <ExternalLink size={10} /> Ir →
+            </button>
+          ))}
+          {i < lineas.length - 1 && <br />}
+        </span>
+      );
+    });
+  };
 
   return (
     <>
@@ -661,7 +755,7 @@ export function ChatAsistente() {
                       border: msg.rol === "assistant" ? "1px solid #e2e8f0" : "none",
                     }}
                   >
-                    {renderTexto(msg.texto)}
+                    {renderTexto(msg.texto, msg.rol === "assistant")}
 
                     {/* BotÃ³n de navegaciÃ³n interactivo */}
                     {msg.navAccion && (
