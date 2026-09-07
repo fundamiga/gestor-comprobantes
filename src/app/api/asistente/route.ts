@@ -143,7 +143,7 @@ function buscarFirmaEnLista(nombres: string[], listaFirmas: { nombre: string; ur
 
 export async function POST(req: NextRequest) {
   try {
-    const { mensaje, historial } = await req.json();
+    const { mensaje, historial, contexto } = await req.json();
 
     const fallbackKey = Buffer.from("QVEuQWI4Uk42TG5aWGF4RWNQNmtqRkJ0S210ZlhhV0lZOEZkSklzU1ZfdWF0WnJoMXVYaEE=", "base64").toString("utf-8");
     const geminiKey = process.env.GEMINI_API_KEY || fallbackKey;
@@ -162,13 +162,43 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = crearSystemPrompt(fechaHoyStr, fechaAyerStr, anioActual);
 
+    // Construir bloque de datos reales del sistema si vienen del cliente
+    let contextoStr = "";
+    if (contexto) {
+      const { periodoActivoNombre, periodos: pList, alertasConsecutivos: alertas } = contexto;
+      if (periodoActivoNombre) {
+        contextoStr += `\n\nDATOS REALES DEL SISTEMA (período activo: ${periodoActivoNombre}):\n`;
+      } else {
+        contextoStr += `\n\nDATOS REALES DEL SISTEMA:\n`;
+      }
+      if (pList && pList.length > 0) {
+        for (const p of pList) {
+          contextoStr += `\nPERÍODO: ${p.nombre}${p.activo ? " (ACTIVO)" : ""} - ${p.totalLotes} lotes\n`;
+          for (const l of (p.lotes || [])) {
+            contextoStr += `  - Lote "${l.nombre}" [id:${l.id}] | estado:${l.estado} | ${l.totalArchivos} archivos | tipos: ${(l.tipos || []).join(", ") || "ninguno"}\n`;
+          }
+        }
+      }
+      if (alertas && alertas.length > 0) {
+        contextoStr += `\nALERTAS DE CONSECUTIVOS:\n`;
+        for (const a of alertas) {
+          if (a.faltantes.length > 0 || a.repetidos.length > 0) {
+            contextoStr += `  - ${a.tipoLabel} (${a.tipoNombre}): rango ${Math.min(...a.presentes)}-${Math.max(...a.presentes)}, faltan ${a.faltantes.length} docs${a.faltantes.length > 0 ? ` (${a.faltantes.slice(0,5).join(",")}${a.faltantes.length > 5 ? "..." : ""})` : ""}, repetidos: ${a.repetidos.length}\n`;
+          } else {
+            contextoStr += `  - ${a.tipoLabel} (${a.tipoNombre}): secuencia correcta del ${Math.min(...a.presentes)} al ${Math.max(...a.presentes)}\n`;
+          }
+        }
+      }
+      contextoStr += `\nCUANDO EL USUARIO PIDA IR A UN LOTE ESPECÍFICO, responde EXACTAMENTE en este JSON (sin texto adicional):\n{"accion":"navegar","loteId":"ID_DEL_LOTE","tipoId":"ID_TIPO_OPCIONAL","mensaje":"Te llevo a: NOMBRE_LOTE"}\n`;
+    }
+
     // Construir historial de mensajes para Gemini
     const contents: { role: string; parts: { text: string }[] }[] = [];
 
     // Incluir instrucciones base al inicio de la conversación
     contents.push({
       role: "user",
-      parts: [{ text: `[INSTRUCCIONES DEL SISTEMA:\n${systemPrompt}\n]` }],
+      parts: [{ text: `[INSTRUCCIONES DEL SISTEMA:\n${systemPrompt}${contextoStr}\n]` }],
     });
     contents.push({
       role: "model",
@@ -240,6 +270,15 @@ export async function POST(req: NextRequest) {
           accion = JSON.parse(respuestaTexto.slice(inicio, fin + 1));
         }
       } catch (_) {}
+    }
+
+    if (accion && accion.accion === "navegar" && accion.loteId) {
+      return NextResponse.json({
+        tipo: "navegar",
+        loteId: accion.loteId,
+        tipoId: accion.tipoId || null,
+        mensaje: accion.mensaje || "Te llevo ahí.",
+      });
     }
 
     if (accion && (accion.accion === "generar_cuentas" || accion.accion === "generar_cuenta")) {

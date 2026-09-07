@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   ClipboardList,
   Plus,
@@ -19,9 +19,11 @@ import Link from "next/link";
 import { useComprobantes } from "@/hooks/useComprobantes";
 import { MESES, TIPOS_DOCUMENTO } from "@/lib/constantes";
 import { motion } from "framer-motion";
-import { calcularEstadoLote, colorEstado } from "@/lib/utils";
+import { calcularEstadoLote, colorEstado, analizarConsecutivos } from "@/lib/utils";
 import { EstadoBadge } from "@/components/comprobantes/UIComunes";
 import { VistaMes } from "@/components/comprobantes/VistaMes";
+import { ChatAsistente } from "@/components/Asistente/ChatAsistente";
+import { AsistenteProvider } from "@/lib/asistente-context";
 import type { EstadoLote } from "@/types";
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -201,6 +203,7 @@ export default function Home() {
   } = useComprobantes();
 
   const [periodoAbierto, setPeriodoAbierto] = useState<string | null>(null);
+  const [loteNavegandoId, setLoteNavegandoId] = useState<string | null>(null);
   const [modalPeriodo, setModalPeriodo] = useState(false);
   const [modoVista, setModoVista] = useState<"grid" | "list">("grid");
 
@@ -216,36 +219,83 @@ export default function Home() {
     setModalPeriodo(false);
   };
 
+  // Navegación desde el chat: abre el periodo correcto y navega al lote
+  const handleNavegarDesdeChat = useCallback((loteId: string, tipoId?: string) => {
+    const periodoConLote = periodos.find((p) => p.lotes.some((l) => l.id === loteId));
+    if (periodoConLote) {
+      setPeriodoAbierto(periodoConLote.id);
+      setLoteNavegandoId(loteId);
+      // Scroll al lote después de render
+      setTimeout(() => {
+        const el = document.getElementById(`lote-${loteId}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (tipoId) {
+          const elTipo = document.getElementById(`tipo-${loteId}-${tipoId}`);
+          if (elTipo) elTipo.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        setLoteNavegandoId(null);
+      }, 600);
+    }
+  }, [periodos]);
+
+  // Calcular alertas del periodo activo para el contexto del chat
+  const alertasParaChat = periodoAbierto
+    ? (() => {
+        const p = periodos.find((x) => x.id === periodoAbierto);
+        if (!p) return [];
+        const alertas = analizarConsecutivos(p);
+        return Object.entries(alertas).map(([tipoId, alerta]) => {
+          const tipoDef = TIPOS_DOCUMENTO.find((t) => t.id === tipoId);
+          return {
+            tipoId,
+            tipoLabel: tipoDef?.label || tipoId,
+            tipoNombre: tipoDef?.nombre || tipoId,
+            faltantes: alerta.faltantes,
+            repetidos: alerta.repetidos,
+            presentes: alerta.presentes,
+          };
+        });
+      })()
+    : [];
+
   // Período abierto → VistaMes
   if (periodoAbierto) {
     const periodo = periodos.find((p) => p.id === periodoAbierto);
     if (periodo) {
       return (
-        <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
-          <Navbar onNuevoPeriodo={() => setModalPeriodo(true)} />
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <VistaMes
-              periodo={periodo}
-              onCrearLote={(datos) => crearLote(periodo.id, datos)}
-              onEliminarLote={(loteId) => eliminarLote(periodo.id, loteId)}
-              onActualizarLote={(loteId, datos) => actualizarLote(periodo.id, loteId, datos)}
-              onAgregarArchivo={(loteId, tipoId, arch) =>
-                agregarArchivo(periodo.id, loteId, tipoId, arch)
-              }
-              onEliminarArchivo={(loteId, tipoId, archId) =>
-                eliminarArchivo(periodo.id, loteId, tipoId, archId)
-              }
-              onActualizarArchivosDoc={(loteId, tipoId, nuevosArchs) =>
-                actualizarArchivosDoc(periodo.id, loteId, tipoId, nuevosArchs)
-              }
-              onVolver={() => setPeriodoAbierto(null)}
-            />
-          </motion.div>
-        </div>
+        <AsistenteProvider
+          periodos={periodos}
+          periodoActivoId={periodoAbierto}
+          alertasConsecutivos={alertasParaChat}
+          onNavegar={handleNavegarDesdeChat}
+        >
+          <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
+            <Navbar onNuevoPeriodo={() => setModalPeriodo(true)} />
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <VistaMes
+                periodo={periodo}
+                onCrearLote={(datos) => crearLote(periodo.id, datos)}
+                onEliminarLote={(loteId) => eliminarLote(periodo.id, loteId)}
+                onActualizarLote={(loteId, datos) => actualizarLote(periodo.id, loteId, datos)}
+                onAgregarArchivo={(loteId, tipoId, arch) =>
+                  agregarArchivo(periodo.id, loteId, tipoId, arch)
+                }
+                onEliminarArchivo={(loteId, tipoId, archId) =>
+                  eliminarArchivo(periodo.id, loteId, tipoId, archId)
+                }
+                onActualizarArchivosDoc={(loteId, tipoId, nuevosArchs) =>
+                  actualizarArchivosDoc(periodo.id, loteId, tipoId, nuevosArchs)
+                }
+                onVolver={() => setPeriodoAbierto(null)}
+              />
+            </motion.div>
+            <ChatAsistente />
+          </div>
+        </AsistenteProvider>
       );
     }
   }
@@ -261,6 +311,12 @@ export default function Home() {
   ).length;
 
   return (
+    <AsistenteProvider
+      periodos={periodos}
+      periodoActivoId={null}
+      alertasConsecutivos={[]}
+      onNavegar={handleNavegarDesdeChat}
+    >
     <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
       {modalPeriodo && (
         <ModalPeriodo
@@ -817,7 +873,9 @@ export default function Home() {
           </div>
         </div>
       </motion.main>
+      <ChatAsistente />
     </div>
+    </AsistenteProvider>
   );
 }
 
