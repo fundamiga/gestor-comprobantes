@@ -333,68 +333,6 @@ export function VistaMes({
           </div>
         )}
 
-        {/* Alertas de consecutivos */}
-        {hayDatosConsecutivos && (
-          <div style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: 13, fontWeight: 800, color: "#0f172a", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-              <AlertCircle size={15} style={{ color: "#d97706" }} /> Control de Consecutivos del Mes
-            </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {Object.entries(alertasConsecutivos).map(([tipoId, alerta]) => {
-                const tipoDef = TIPOS_DOCUMENTO.find((t) => t.id === tipoId);
-                const tieneProblemas = alerta.faltantes.length > 0 || alerta.repetidos.length > 0;
-                
-                return (
-                  <div
-                    key={tipoId}
-                    style={{
-                      background: tieneProblemas ? "#fffbeb" : "#f0fdf4",
-                      border: `1px solid ${tieneProblemas ? "#fde68a" : "#bbf7d0"}`,
-                      borderRadius: 12,
-                      padding: "12px 16px",
-                      display: "flex",
-                      gap: 12,
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
-                        <strong style={{ fontSize: 13, color: tieneProblemas ? "#92400e" : "#166534" }}>
-                          {tipoDef?.label} ({tipoDef?.nombre})
-                        </strong>
-                        <span style={{ fontSize: 11, color: tieneProblemas ? "#b45309" : "#15803d", fontWeight: 700 }}>
-                          Rango: del {Math.min(...alerta.presentes)} al {Math.max(...alerta.presentes)}
-                        </span>
-                      </div>
-                      
-                      {!tieneProblemas ? (
-                        <p style={{ margin: 0, fontSize: 11, color: "#15803d", display: "flex", alignItems: "center", gap: 4 }}>
-                          <CheckCircle2 size={13} />
-                          Secuencia correcta y continua
-                        </p>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 3 }}>
-                          {alerta.faltantes.length > 0 && (
-                            <p style={{ margin: 0, fontSize: 11, color: "#b45309", lineHeight: 1.4 }}>
-                              <strong style={{ color: "#92400e" }}>Faltan ({alerta.faltantes.length} doc{alerta.faltantes.length !== 1 ? "s" : ""}):</strong>{" "}
-                              {agruparEnRangos(alerta.faltantes).slice(0, 8).join(", ")}
-                              {agruparEnRangos(alerta.faltantes).length > 8 ? ` y ${agruparEnRangos(alerta.faltantes).length - 8} más...` : ""}
-                            </p>
-                          )}
-                          {alerta.repetidos.length > 0 && (
-                            <p style={{ margin: 0, fontSize: 11, color: "#b45309" }}>
-                              <strong style={{ color: "#92400e" }}>Repetidos:</strong> {alerta.repetidos.join(", ")}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Lista vacía */}
         {periodo.lotes.length === 0 ? (
@@ -710,6 +648,69 @@ export function VistaMes({
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Alertas de consecutivos — al final */}
+        {hayDatosConsecutivos && (
+          <div style={{ marginTop: 24 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 800, color: "#0f172a", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+              <AlertCircle size={15} style={{ color: "#d97706" }} /> Control de Consecutivos del Mes
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {Object.entries(alertasConsecutivos).map(([tipoId, alerta]) => {
+                const tipoDef = TIPOS_DOCUMENTO.find((t) => t.id === tipoId);
+                const tieneProblemas = alerta.faltantes.length > 0 || alerta.repetidos.length > 0;
+                
+                return (
+                  <div
+                    key={tipoId}
+                    style={{
+                      background: tieneProblemas ? "#fffbeb" : "#f0fdf4",
+                      border: `1px solid ${tieneProblemas ? "#fde68a" : "#bbf7d0"}`,
+                      borderRadius: 12,
+                      padding: "12px 16px",
+                      display: "flex",
+                      gap: 12,
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+                        <strong style={{ fontSize: 13, color: tieneProblemas ? "#92400e" : "#166534" }}>
+                          {tipoDef?.label} ({tipoDef?.nombre})
+                        </strong>
+                        <span style={{ fontSize: 11, color: tieneProblemas ? "#b45309" : "#15803d", fontWeight: 700 }}>
+                          Rango: del {Math.min(...alerta.presentes)} al {Math.max(...alerta.presentes)}
+                        </span>
+                      </div>
+                      
+                      {!tieneProblemas ? (
+                        <p style={{ margin: 0, fontSize: 11, color: "#15803d", display: "flex", alignItems: "center", gap: 4 }}>
+                          <CheckCircle2 size={13} />
+                          Secuencia correcta y continua
+                        </p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 3 }}>
+                          {alerta.faltantes.length > 0 && (
+                            <p style={{ margin: 0, fontSize: 11, color: "#b45309", lineHeight: 1.4 }}>
+                              <strong style={{ color: "#92400e" }}>Faltan ({alerta.faltantes.length} doc{alerta.faltantes.length !== 1 ? "s" : ""}):</strong>{" "}
+                              {agruparEnRangos(alerta.faltantes).slice(0, 8).join(", ")}
+                              {agruparEnRangos(alerta.faltantes).length > 8 ? ` y ${agruparEnRangos(alerta.faltantes).length - 8} más...` : ""}
+                            </p>
+                          )}
+                          {alerta.repetidos.length > 0 && (
+                            <p style={{ margin: 0, fontSize: 11, color: "#b45309" }}>
+                              <strong style={{ color: "#92400e" }}>Repetidos:</strong> {alerta.repetidos.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
