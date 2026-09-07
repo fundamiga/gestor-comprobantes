@@ -14,6 +14,7 @@ import {
   LayoutGrid,
   List,
   Trash2,
+  Scale,
 } from "lucide-react";
 import Link from "next/link";
 import { useComprobantes } from "@/hooks/useComprobantes";
@@ -24,6 +25,7 @@ import { EstadoBadge } from "@/components/comprobantes/UIComunes";
 import { VistaMes } from "@/components/comprobantes/VistaMes";
 import { ChatAsistente } from "@/components/Asistente/ChatAsistente";
 import { AsistenteProvider } from "@/lib/asistente-context";
+import { BibliotecaLegal } from "@/components/legal/BibliotecaLegal";
 import type { EstadoLote } from "@/types";
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -208,6 +210,7 @@ export default function Home() {
   const [highlightInfo, setHighlightInfo] = useState<import("@/lib/asistente-context").HighlightInfo | null>(null);
   const [modalPeriodo, setModalPeriodo] = useState(false);
   const [modoVista, setModoVista] = useState<"grid" | "list">("grid");
+  const [viendoLegal, setViendoLegal] = useState(false);
 
   const handleSetHighlight = useCallback((info: import("@/lib/asistente-context").HighlightInfo | null) => {
     setHighlightInfo(info);
@@ -279,6 +282,11 @@ export default function Home() {
         });
       })()
     : [];
+
+  // Documentos Legales → BibliotecaLegal
+  if (viendoLegal) {
+    return <BibliotecaLegal onVolver={() => setViendoLegal(false)} />;
+  }
 
   // Período abierto → VistaMes
   if (periodoAbierto) {
@@ -417,6 +425,43 @@ export default function Home() {
             ))}
           </div>
         )}
+
+        {/* ── Acceso rápido: Documentos Legales ─────────────────────────────── */}
+        <div style={{ marginBottom: 24 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#5f6368", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 10px 2px", display: "flex", alignItems: "center", gap: 5 }}>
+            <Folder size={13} color="#5f6368" /> Accesos rápidos
+          </p>
+          <motion.div
+            whileHover={{ y: -2 }}
+            className="drive-folder-card"
+            style={{ display: "flex", overflow: "hidden", cursor: "pointer", alignItems: "stretch" }}
+            onClick={() => setViendoLegal(true)}
+          >
+            {/* Thumbnail */}
+            <div style={{
+              width: 88, flexShrink: 0,
+              background: "linear-gradient(150deg, #7c3aed20, #7c3aed08)",
+              borderRight: "1px solid #7c3aed20",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Scale size={34} color="#7c3aed" style={{ opacity: 0.8 }} />
+            </div>
+            {/* Info */}
+            <div style={{ padding: "14px 18px", flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                <span style={{ fontWeight: 700, fontSize: 14, color: "#202124" }}>Documentos Legales</span>
+                <span style={{ fontSize: 9, fontWeight: 800, background: "#7c3aed", color: "#fff", padding: "1px 7px", borderRadius: 99, textTransform: "uppercase", letterSpacing: "0.04em" }}>Biblioteca</span>
+              </div>
+              <p style={{ margin: 0, fontSize: 12, color: "#5f6368" }}>
+                Leyes, contratos, estatutos, resoluciones y certificados
+              </p>
+            </div>
+            {/* Flecha */}
+            <div style={{ display: "flex", alignItems: "center", paddingRight: 16, color: "#9aa0a6" }}>
+              <ChevronRight size={18} />
+            </div>
+          </motion.div>
+        </div>
 
         {/* Sin períodos */}
         {!cargado || periodos.length === 0 ? (
