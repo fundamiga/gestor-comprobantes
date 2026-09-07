@@ -185,6 +185,98 @@ export function ChatAsistente() {
     }
   };
 
+  // ── Detector de intención de navegación en el cliente ───────────────────────
+  const detectarNavegacion = (texto: string): { periodoId?: string; loteId?: string; tipoId?: string; label: string } | null => {
+    const t = texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    const esNavegar = /(\blleva(me)?\b|\bmuestra(me)?\b|\bmuestre\b|\bver?\b|\babre?\b|\babrir\b|\bir\s+a\b|\bvamos?\s+a\b|\bnavega\b|\babri(r)?\b|\bvoy\s+a\b)/i.test(t)
+      || /\b(mostrar|mostrame|muestrame|muestre|llevame|lleveme|abre|abrir|ves|ve\s+a|ver\s+la?|ir\s+al?)\b/i.test(t)
+      || /\b(archivos?|carpeta|ds|cc[-\s]?9|cc[-\s]?6|cc[-\s]?10|cc[-\s]?11|fv|factura|soporte|egreso|causaci[oó]n|aprobaci[oó]n)\b/i.test(t);
+
+    if (!esNavegar) return null;
+
+    // Detectar tipo de documento
+    const tipoMap: { regex: RegExp; id: string }[] = [
+      { regex: /\bds\b|\bdocumento[\s-]?soporte\b|\bsoporte\b/i, id: "DS" },
+      { regex: /\bcc[-\s]?9\b|\bcausaci[oó]n\b|\bdeuda\b/i, id: "CC9" },
+      { regex: /\bcc[-\s]?6\b|\begreso\b|\bpago\b/i, id: "CC6" },
+      { regex: /\bcc[-\s]?10\b|\baprobaci[oó]n\b|\bautorizaci[oó]n\b/i, id: "CC10" },
+      { regex: /\bfv\b|\bfactura\b/i, id: "FV" },
+      { regex: /\bcc[-\s]?11\b|\bcapital\b/i, id: "CC11" },
+      { regex: /\bcc[-\s]?1\b|\bextracto\b/i, id: "CC1" },
+      { regex: /\bconciliaci[oó]n\b|\bconcil\b/i, id: "BANC_CONCIL" },
+      { regex: /\bingreso\b/i, id: "ING" },
+      { regex: /\btraslado\b/i, id: "TD" },
+      { regex: /\bseguridad[\s-]?social\b|\bss\b/i, id: "SS" },
+    ];
+
+    let detectedTipoId: string | undefined;
+    for (const entry of tipoMap) {
+      if (entry.regex.test(t)) { detectedTipoId = entry.id; break; }
+    }
+
+    // Detectar período por nombre de mes
+    const mesMap: { regex: RegExp; index: number }[] = [
+      { regex: /\benero\b/, index: 0 }, { regex: /\bfebrero\b/, index: 1 },
+      { regex: /\bmarzo\b/, index: 2 }, { regex: /\babril\b/, index: 3 },
+      { regex: /\bmayo\b/, index: 4 }, { regex: /\bjunio\b/, index: 5 },
+      { regex: /\bjulio\b/, index: 6 }, { regex: /\bagosto\b/, index: 7 },
+      { regex: /\bseptiembre\b|\bseptiem\b|\bsetiembr\b/, index: 8 },
+      { regex: /\boctubre\b/, index: 9 }, { regex: /\bnoviembre\b/, index: 10 },
+      { regex: /\bdiciembre\b/, index: 11 },
+    ];
+
+    let detectedPeriodoId: string | undefined;
+    for (const entry of mesMap) {
+      if (entry.regex.test(t)) {
+        const anoMatch = t.match(/\b(20\d{2})\b/);
+        const anio = anoMatch ? parseInt(anoMatch[1]) : new Date().getFullYear();
+        const p = periodos.find((x) => x.mes === entry.index && x.anio === anio);
+        if (p) { detectedPeriodoId = p.id; break; }
+      }
+    }
+
+    // Detectar lote por nombre de proveedor
+    let detectedLoteId: string | undefined;
+    const todosLotes = periodos.flatMap((p) => p.lotes.map((l) => ({ ...l, periodoId: p.id })));
+    for (const lote of todosLotes) {
+      const nombreNorm = lote.proveedor.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const palabras = nombreNorm.split(/\s+/);
+      for (const palabra of palabras) {
+        if (palabra.length >= 4 && t.includes(palabra)) {
+          detectedLoteId = lote.id;
+          if (!detectedPeriodoId) detectedPeriodoId = lote.periodoId;
+          break;
+        }
+      }
+      if (detectedLoteId) break;
+    }
+
+    // Si tiene tipo pero no periodo, usar el activo o el más reciente
+    if (detectedTipoId && !detectedPeriodoId) {
+      detectedPeriodoId = periodoActivoId || (periodos.length > 0 ? periodos[periodos.length - 1].id : undefined);
+    }
+
+    // Si sólo tiene una de las tres coordenadas o más, navegar
+    if (detectedTipoId || detectedLoteId || detectedPeriodoId) {
+      const p = detectedPeriodoId ? periodos.find((x) => x.id === detectedPeriodoId) : null;
+      const lote = detectedLoteId ? todosLotes.find((l) => l.id === detectedLoteId) : null;
+      const tipoDef = detectedTipoId ? TIPOS_DOCUMENTO.find((t2) => t2.id === detectedTipoId) : null;
+      const partes: string[] = [];
+      if (p) partes.push(`${MESES[p.mes]} ${p.anio}`);
+      if (lote) partes.push(lote.proveedor);
+      if (tipoDef) partes.push(tipoDef.label);
+      return {
+        periodoId: detectedPeriodoId,
+        loteId: detectedLoteId,
+        tipoId: detectedTipoId,
+        label: partes.join(" › ") || "Archivo",
+      };
+    }
+
+    return null;
+  };
+
   const enviarMensajeTexto = async (textoAEnviar: string) => {
     const texto = textoAEnviar.trim();
     if (!texto || cargando) return;
@@ -196,6 +288,23 @@ export function ChatAsistente() {
 
     setMensajes((prev) => [...prev, msgUser]);
     setInput("");
+
+    // ── Interceptar intent de navegación ANTES de llamar a la API ────────────
+    const navIntent = detectarNavegacion(texto);
+    if (navIntent) {
+      navegarA(navIntent.loteId, navIntent.tipoId, navIntent.periodoId);
+      setMensajes((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString() + "_nav",
+          rol: "assistant",
+          texto: `📂 ¡Listo! Te llevo a **${navIntent.label}**.`,
+          navAccion: navIntent,
+        },
+      ]);
+      return;
+    }
+
     setCargando(true);
 
     try {
