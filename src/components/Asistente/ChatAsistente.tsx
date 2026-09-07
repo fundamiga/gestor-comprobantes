@@ -1,0 +1,344 @@
+﻿"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { MessageCircle, X, Send, Loader2, Download, Bot, User } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
+
+interface Mensaje {
+  id: string;
+  rol: "user" | "assistant";
+  texto: string;
+  pdfUrl?: string;
+  pdfNombre?: string;
+}
+
+interface DatosCuenta {
+  nombre: string;
+  cedula: string;
+  valor: number;
+  concepto: string;
+  firmaUrl: string | null;
+}
+
+export function ChatAsistente() {
+  const [abierto, setAbierto] = useState(false);
+  const [mensajes, setMensajes] = useState<Mensaje[]>([
+    {
+      id: "bienvenida",
+      rol: "assistant",
+      texto: "¡Hola! Soy **Amiga IA**, la asistente del Gestor de Comprobantes de Fundamiga. 🌟\n\nPuedo ayudarte con:\n- Preguntas sobre el sistema\n- Generar **cuentas de cobro** en PDF con firma automática\n\n¿En qué te puedo ayudar?",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [cargando, setCargando] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [mensajes, cargando]);
+
+  useEffect(() => {
+    if (abierto) setTimeout(() => inputRef.current?.focus(), 200);
+  }, [abierto]);
+
+  const generarPDF = async (datos: DatosCuenta): Promise<{ url: string; nombre: string } | null> => {
+    try {
+      const res = await fetch("/api/generar-cuenta-cobro-manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(datos),
+      });
+      if (!res.ok) throw new Error("Error generando el PDF");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const nombre = `Cuenta_Cobro_${datos.nombre.replace(/\s+/g, "_")}.pdf`;
+      return { url, nombre };
+    } catch (e: any) {
+      toast.error("Error generando PDF: " + e.message);
+      return null;
+    }
+  };
+
+  const enviarMensaje = async () => {
+    const texto = input.trim();
+    if (!texto || cargando) return;
+
+    const msgUser: Mensaje = { id: Date.now().toString(), rol: "user", texto };
+    const historialParaApi = mensajes
+      .filter((m) => m.id !== "bienvenida")
+      .map((m) => ({ rol: m.rol, texto: m.texto }));
+
+    setMensajes((prev) => [...prev, msgUser]);
+    setInput("");
+    setCargando(true);
+
+    try {
+      const res = await fetch("/api/asistente", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mensaje: texto, historial: historialParaApi }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Error desconocido");
+      }
+
+      if (data.tipo === "cuenta_cobro" && data.datos) {
+        // Primero mostrar el mensaje de confirmación
+        const msgConfirm: Mensaje = {
+          id: Date.now().toString() + "_c",
+          rol: "assistant",
+          texto: data.mensaje,
+        };
+        setMensajes((prev) => [...prev, msgConfirm]);
+
+        // Generar el PDF
+        const pdf = await generarPDF(data.datos);
+        if (pdf) {
+          const msgPdf: Mensaje = {
+            id: Date.now().toString() + "_pdf",
+            rol: "assistant",
+            texto: `📄 La cuenta de cobro de **${data.datos.nombre}** por **$${data.datos.valor.toLocaleString("es-CO")}** está lista.${data.datos.firmaUrl ? " ✍️ Firma adjuntada automáticamente." : " ⚠️ No se encontró firma en el sistema."}`,
+            pdfUrl: pdf.url,
+            pdfNombre: pdf.nombre,
+          };
+          setMensajes((prev) => [...prev, msgPdf]);
+        }
+      } else {
+        const msgBot: Mensaje = {
+          id: Date.now().toString() + "_r",
+          rol: "assistant",
+          texto: data.mensaje || data.error || "No pude procesar tu solicitud.",
+        };
+        setMensajes((prev) => [...prev, msgBot]);
+      }
+    } catch (err: any) {
+      const msgErr: Mensaje = {
+        id: Date.now().toString() + "_e",
+        rol: "assistant",
+        texto: "❌ Error al conectar con el asistente. Verifica tu conexión.",
+      };
+      setMensajes((prev) => [...prev, msgErr]);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      enviarMensaje();
+    }
+  };
+
+  const renderTexto = (texto: string) => {
+    return texto.split("\n").map((linea, i) => {
+      const procesada = linea
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.+?)\*/g, "<em>$1</em>");
+      return (
+        <span key={i}>
+          <span dangerouslySetInnerHTML={{ __html: procesada }} />
+          {i < texto.split("\n").length - 1 && <br />}
+        </span>
+      );
+    });
+  };
+
+  return (
+    <>
+      {/* Botón flotante */}
+      <button
+        onClick={() => setAbierto(!abierto)}
+        style={{
+          position: "fixed",
+          bottom: 24,
+          right: 24,
+          zIndex: 1000,
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #10b981, #059669)",
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 8px 24px rgba(16,185,129,0.4)",
+        }}
+        title="Asistente IA"
+      >
+        {abierto ? <X size={24} color="#fff" /> : <MessageCircle size={24} color="#fff" />}
+      </button>
+
+      {/* Panel de chat */}
+      <AnimatePresence>
+        {abierto && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              position: "fixed",
+              bottom: 90,
+              right: 24,
+              zIndex: 999,
+              width: 380,
+              maxWidth: "calc(100vw - 48px)",
+              height: 520,
+              maxHeight: "calc(100vh - 120px)",
+              background: "#fff",
+              borderRadius: 20,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              background: "linear-gradient(135deg, #10b981, #059669)",
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+            }}>
+              <div style={{ width: 36, height: 36, background: "rgba(255,255,255,0.2)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Bot size={20} color="#fff" />
+              </div>
+              <div>
+                <p style={{ margin: 0, fontWeight: 900, fontSize: 14, color: "#fff" }}>Amiga IA</p>
+                <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.8)" }}>Asistente de Fundamiga</p>
+              </div>
+            </div>
+
+            {/* Mensajes */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px 0" }}>
+              {mensajes.map((msg) => (
+                <div
+                  key={msg.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: msg.rol === "user" ? "flex-end" : "flex-start",
+                    marginBottom: 12,
+                    gap: 8,
+                    alignItems: "flex-end",
+                  }}
+                >
+                  {msg.rol === "assistant" && (
+                    <div style={{ width: 28, height: 28, background: "#d1fae5", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Bot size={14} style={{ color: "#10b981" }} />
+                    </div>
+                  )}
+                  <div style={{
+                    maxWidth: "80%",
+                    background: msg.rol === "user" ? "#10b981" : "#f8fafc",
+                    color: msg.rol === "user" ? "#fff" : "#0f172a",
+                    borderRadius: msg.rol === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                    border: msg.rol === "assistant" ? "1px solid #e2e8f0" : "none",
+                  }}>
+                    {renderTexto(msg.texto)}
+                    {msg.pdfUrl && (
+                      <a
+                        href={msg.pdfUrl}
+                        download={msg.pdfNombre}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          marginTop: 10,
+                          background: "#10b981",
+                          color: "#fff",
+                          borderRadius: 10,
+                          padding: "8px 14px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          textDecoration: "none",
+                        }}
+                      >
+                        <Download size={14} /> Descargar PDF
+                      </a>
+                    )}
+                  </div>
+                  {msg.rol === "user" && (
+                    <div style={{ width: 28, height: 28, background: "#dbeafe", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <User size={14} style={{ color: "#3b82f6" }} />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {cargando && (
+                <div style={{ display: "flex", gap: 8, marginBottom: 12, alignItems: "flex-end" }}>
+                  <div style={{ width: 28, height: 28, background: "#d1fae5", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Bot size={14} style={{ color: "#10b981" }} />
+                  </div>
+                  <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "16px 16px 16px 4px", padding: "10px 14px", display: "flex", gap: 6, alignItems: "center" }}>
+                    <Loader2 size={14} style={{ color: "#10b981", animation: "spin 1s linear infinite" }} />
+                    <span style={{ fontSize: 12, color: "#64748b" }}>Pensando...</span>
+                  </div>
+                </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+
+            {/* Input */}
+            <div style={{ padding: "12px 14px", borderTop: "1px solid #f1f5f9", display: "flex", gap: 8, alignItems: "flex-end" }}>
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Escribe tu mensaje... (Enter para enviar)"
+                rows={1}
+                style={{
+                  flex: 1,
+                  padding: "10px 12px",
+                  border: "1.5px solid #e2e8f0",
+                  borderRadius: 12,
+                  fontSize: 13,
+                  fontFamily: "inherit",
+                  outline: "none",
+                  resize: "none",
+                  lineHeight: 1.4,
+                  maxHeight: 100,
+                  overflowY: "auto",
+                }}
+              />
+              <button
+                onClick={enviarMensaje}
+                disabled={!input.trim() || cargando}
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: "50%",
+                  background: input.trim() && !cargando ? "#10b981" : "#e2e8f0",
+                  border: "none",
+                  cursor: input.trim() && !cargando ? "pointer" : "not-allowed",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  transition: "background 0.2s",
+                }}
+              >
+                <Send size={16} color={input.trim() && !cargando ? "#fff" : "#94a3b8"} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+    </>
+  );
+}

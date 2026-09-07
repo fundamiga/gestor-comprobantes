@@ -408,19 +408,28 @@ export function VistaMes({
               return (
                 <motion.div
                   key={lote.id}
-                  whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.05)", borderColor: `${colorEstado(estado)}60` }}
+                  className="win-folder-card"
+                  whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
                   transition={{ duration: 0.2 }}
                   style={{
-                    background: "#fff",
-                    border: `1.5px solid ${colorEstado(estado)}30`,
-                    borderRadius: 16,
-                    overflow: "hidden",
-                    boxShadow: "0 1px 6px rgba(0,0,0,0.02)",
+                    borderColor: `${colorEstado(estado)}60`,
+                    marginTop: 14,
                   }}
                 >
+                  {/* Solapa / Pestaña superior de Carpeta */}
+                  <div
+                    className="win-folder-tab"
+                    style={{
+                      background: colorEstado(estado),
+                      color: "#fff",
+                      borderColor: colorEstado(estado),
+                    }}
+                  >
+                    <Folder size={10} style={{ color: "#fff" }} /> LOTE PROVEEDOR
+                  </div>
                   <div
                     style={{
-                      padding: "14px 16px",
+                      padding: "16px 16px 14px 16px",
                       display: "flex",
                       alignItems: "center",
                       gap: 12,

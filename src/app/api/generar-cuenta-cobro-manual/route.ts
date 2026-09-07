@@ -3,18 +3,34 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    
-    // Extraer datos del formulario
-    const nombre = (formData.get("nombre") as string) || "Proveedor";
-    const nit = (formData.get("nit") as string) || "Por definir";
-    const concepto = (formData.get("concepto") as string) || "Honorarios / Servicios";
-    const valorStr = formData.get("valor") as string;
-    const valor = parseFloat(valorStr) || 0;
-    const fecha = formData.get("fecha") as string;
-    
-    const firmaFile = formData.get("firma") as File | null;
-    const firmaUrl = formData.get("firmaUrl") as string | null;
+    const contentType = req.headers.get("content-type") || "";
+    let nombre = "Proveedor";
+    let nit = "Por definir";
+    let concepto = "Honorarios / Servicios";
+    let valor = 0;
+    let fecha = "";
+    let firmaFile: File | null = null;
+    let firmaUrl: string | null = null;
+
+    if (contentType.includes("application/json")) {
+      const body = await req.json();
+      nombre = body.nombre || "Proveedor";
+      nit = body.nit || body.cedula || "Por definir";
+      concepto = body.concepto || "Honorarios / Servicios";
+      valor = parseFloat(body.valor) || 0;
+      fecha = body.fecha || "";
+      firmaUrl = body.firmaUrl || null;
+    } else {
+      const formData = await req.formData();
+      nombre = (formData.get("nombre") as string) || "Proveedor";
+      nit = (formData.get("nit") as string) || (formData.get("cedula") as string) || "Por definir";
+      concepto = (formData.get("concepto") as string) || "Honorarios / Servicios";
+      const valorStr = formData.get("valor") as string;
+      valor = parseFloat(valorStr) || 0;
+      fecha = formData.get("fecha") as string;
+      firmaFile = formData.get("firma") as File | null;
+      firmaUrl = formData.get("firmaUrl") as string | null;
+    }
 
     // 1. Generar el PDF
     const pdfDoc = await PDFDocument.create();

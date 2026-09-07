@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Building2, AlertCircle, CheckCircle, CheckCircle2, Info, FileDown, Edit2, Check, X } from "lucide-react";
+import { ArrowLeft, Building2, AlertCircle, CheckCircle, CheckCircle2, Info, FileDown, Edit2, Check, X, Folder, FolderOpen, LayoutGrid, List, HardDrive, ChevronRight } from "lucide-react";
 import type { Lote, Periodo, ArchivoSubido } from "@/types";
 import { TIPOS_DOCUMENTO, MESES } from "@/lib/constantes";
 import { calcularEstadoLote, analizarConsecutivos } from "@/lib/utils";
 import { EstadoBadge, VisorArchivo } from "./UIComunes";
 import { TipoDocCard } from "./TipoDocCard";
+import { CarpetaIcono } from "./CarpetaIcono";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
@@ -33,6 +34,8 @@ export function VistaLote({
   const [editando, setEditando] = useState(false);
   const [provEdit, setProvEdit] = useState(lote.proveedor);
   const [refEdit, setRefEdit] = useState(lote.referencia || "");
+  const [vistaModo, setVistaModo] = useState<"list" | "grid">("grid");
+  const [carpetaAbierta, setCarpetaAbierta] = useState<string | null>(null);
 
   const handleGuardarEdicion = () => {
     if (!provEdit.trim()) return;
@@ -78,7 +81,7 @@ export function VistaLote({
         />
       )}
 
-      {/* Header sticky - Reparado con mayor prioridad */}
+      {/* Header sticky - Estilo Explorador de Windows */}
       <div
         style={{
           background: "#ffffff",
@@ -90,25 +93,58 @@ export function VistaLote({
           boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
         }}
       >
-        <button
-          onClick={onVolver}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: "#64748b",
-            fontSize: 12,
-            fontWeight: 700,
-            marginBottom: 10,
-            padding: 0,
-            fontFamily: "inherit",
-          }}
-        >
-          <ArrowLeft size={14} /> Volver a {mesLabel}
-        </button>
+        {/* Barra de dirección estilo Explorador de Windows */}
+        <div className="win-address-bar" style={{ marginBottom: 12 }}>
+          <button
+            onClick={() => {
+              if (carpetaAbierta) {
+                setCarpetaAbierta(null);
+              } else {
+                onVolver();
+              }
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#2563eb",
+              fontSize: 12,
+              fontWeight: 800,
+              padding: 0,
+              fontFamily: "inherit",
+            }}
+          >
+            <ArrowLeft size={13} /> Volver
+          </button>
+          <span style={{ color: "#cbd5e1" }}>|</span>
+          <HardDrive size={13} style={{ color: "#64748b" }} />
+          <span style={{ color: "#64748b" }}>Este Equipo</span>
+          <ChevronRight size={12} style={{ color: "#94a3b8" }} />
+          <FolderOpen size={13} style={{ color: "#f59e0b" }} />
+          <span style={{ color: "#64748b" }}>{mesLabel}</span>
+          <ChevronRight size={12} style={{ color: "#94a3b8" }} />
+          <Folder size={13} style={{ color: "#10b981" }} />
+          {carpetaAbierta ? (
+            <>
+              <button
+                onClick={() => setCarpetaAbierta(null)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 12, fontWeight: 700, padding: 0, fontFamily: "inherit" }}
+              >
+                {lote.proveedor}
+              </button>
+              <ChevronRight size={12} style={{ color: "#94a3b8" }} />
+              <Folder size={13} style={{ color: TIPOS_DOCUMENTO.find(t => t.id === carpetaAbierta)?.color ?? "#64748b" }} />
+              <strong style={{ color: "#0f172a" }}>
+                {TIPOS_DOCUMENTO.find(t => t.id === carpetaAbierta)?.label ?? carpetaAbierta}
+              </strong>
+            </>
+          ) : (
+            <strong style={{ color: "#0f172a" }}>{lote.proveedor}</strong>
+          )}
+        </div>
 
         <div
           style={{
@@ -255,7 +291,50 @@ export function VistaLote({
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {/* Selector de modo de vista */}
+            <div style={{ display: "flex", background: "#f1f5f9", borderRadius: 10, padding: 3, border: "1px solid #cbd5e1" }}>
+              <button
+                onClick={() => setVistaModo("list")}
+                title="Vista Lista Detallada"
+                style={{
+                  background: vistaModo === "list" ? "#fff" : "transparent",
+                  color: vistaModo === "list" ? "#0f172a" : "#64748b",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "6px 10px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  boxShadow: vistaModo === "list" ? "0 2px 5px rgba(0,0,0,0.1)" : "none",
+                }}
+              >
+                <List size={13} /> Lista
+              </button>
+              <button
+                onClick={() => setVistaModo("grid")}
+                title="Vista Cuadrícula de Carpetas"
+                style={{
+                  background: vistaModo === "grid" ? "#fff" : "transparent",
+                  color: vistaModo === "grid" ? "#0f172a" : "#64748b",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "6px 10px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  boxShadow: vistaModo === "grid" ? "0 2px 5px rgba(0,0,0,0.1)" : "none",
+                }}
+              >
+                <LayoutGrid size={13} /> Carpetas
+              </button>
+            </div>
             {/* Botón Descargar Lote */}
             <button
               onClick={handleDescargarLote}
@@ -305,7 +384,7 @@ export function VistaLote({
       </div>
 
       {/* Contenido */}
-      <div style={{ padding: "20px 24px", maxWidth: 680, margin: "0 auto" }}>
+      <div style={{ padding: "20px 24px", maxWidth: vistaModo === "grid" ? 1080 : 720, margin: "0 auto", transition: "max-width 0.3s ease" }}>
         
         {/* BOTÓN ORIGINAL DE GUARDAR (Reinsertado) */}
         <div style={{ marginBottom: 20 }}>
@@ -439,16 +518,121 @@ export function VistaLote({
           </p>
         </div>
 
-        {/* Cards de tipos de documento agrupadas por categoría */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          
-          {/* SECCIÓN COMPROBANTES */}
-          <div>
-            <h3 style={{ fontSize: 13, fontWeight: 900, color: "#475569", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-               Comprobantes Contables
-            </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {TIPOS_DOCUMENTO.filter(t => t.categoria === "comprobantes").map((tipo) => (
+        {/* === VISTA GRID: EXPLORADOR DE CARPETAS === */}
+        {vistaModo === "grid" && (
+          carpetaAbierta === null ? (
+            /* Nivel 1 — cuadrícula de carpetas */
+            <motion.div
+              key="folder-grid"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              style={{ display: "flex", flexDirection: "column", gap: 32 }}
+            >
+              {/* Sección: Comprobantes */}
+              <div>
+                <h3 style={{ fontSize: 12, fontWeight: 900, color: "#475569", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.07em", display: "flex", alignItems: "center", gap: 6 }}>
+                  <Folder size={14} style={{ color: "#f59e0b" }} /> Comprobantes Contables
+                </h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 14 }}>
+                  {TIPOS_DOCUMENTO.filter(t => t.categoria === "comprobantes").map(tipo => (
+                    <CarpetaIcono
+                      key={tipo.id}
+                      tipo={tipo}
+                      numArchivos={(lote.documentos[tipo.id] ?? []).length}
+                      onClick={() => setCarpetaAbierta(tipo.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Sección: Bancos */}
+              <div>
+                <h3 style={{ fontSize: 12, fontWeight: 900, color: "#0d9488", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.07em", display: "flex", alignItems: "center", gap: 6 }}>
+                  <Folder size={14} style={{ color: "#0d9488" }} /> Conciliaciones — Bancos
+                </h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 14 }}>
+                  {TIPOS_DOCUMENTO.filter(t => t.categoria === "bancos").map(tipo => (
+                    <CarpetaIcono
+                      key={tipo.id}
+                      tipo={tipo}
+                      numArchivos={(lote.documentos[tipo.id] ?? []).length}
+                      onClick={() => setCarpetaAbierta(tipo.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Sección: Caja */}
+              <div>
+                <h3 style={{ fontSize: 12, fontWeight: 900, color: "#65a30d", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.07em", display: "flex", alignItems: "center", gap: 6 }}>
+                  <Folder size={14} style={{ color: "#65a30d" }} /> Conciliaciones — Caja
+                </h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 14 }}>
+                  {TIPOS_DOCUMENTO.filter(t => t.categoria === "caja").map(tipo => (
+                    <CarpetaIcono
+                      key={tipo.id}
+                      tipo={tipo}
+                      numArchivos={(lote.documentos[tipo.id] ?? []).length}
+                      onClick={() => setCarpetaAbierta(tipo.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Sección: Otros */}
+              {TIPOS_DOCUMENTO.some(t => t.categoria === "otros") && (
+                <div>
+                  <h3 style={{ fontSize: 12, fontWeight: 900, color: "#64748b", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.07em", display: "flex", alignItems: "center", gap: 6 }}>
+                    <Folder size={14} style={{ color: "#64748b" }} /> Otros Documentos
+                  </h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 14 }}>
+                    {TIPOS_DOCUMENTO.filter(t => t.categoria === "otros").map(tipo => (
+                      <CarpetaIcono
+                        key={tipo.id}
+                        tipo={tipo}
+                        numArchivos={(lote.documentos[tipo.id] ?? []).length}
+                        onClick={() => setCarpetaAbierta(tipo.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            /* Nivel 2 — dentro de una carpeta */
+            <motion.div
+              key={`carpeta-${carpetaAbierta}`}
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -30 }}
+              transition={{ duration: 0.22 }}
+            >
+              {/* Botón volver a carpetas */}
+              <button
+                onClick={() => setCarpetaAbierta(null)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "#f1f5f9",
+                  border: "1.5px solid #e2e8f0",
+                  borderRadius: 12,
+                  padding: "8px 16px",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  color: "#475569",
+                  fontFamily: "inherit",
+                  marginBottom: 20,
+                }}
+              >
+                <ArrowLeft size={14} /> Volver a carpetas
+              </button>
+
+              {/* TipoDocCard de la carpeta seleccionada, forzado abierto */}
+              {TIPOS_DOCUMENTO.filter(t => t.id === carpetaAbierta).map(tipo => (
                 <TipoDocCard
                   key={tipo.id}
                   tipo={tipo}
@@ -459,96 +643,24 @@ export function VistaLote({
                   onVer={setVisorArchivo}
                   nombreProveedor={lote.proveedor}
                   alertaConsecutivo={alertasConsecutivos[tipo.id]}
+                  defaultOpen={true}
                 />
               ))}
-            </div>
-          </div>
+            </motion.div>
+          )
+        )}
 
-          {/* SECCIÓN CONCILIACIONES */}
-          <div style={{ background: "#f8fafc", padding: "20px", borderRadius: 20, border: "2px solid #e2e8f0" }}>
-            <h3 style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", marginBottom: 18, display: "flex", alignItems: "center", gap: 8 }}>
-               <CheckCircle2 size={18} style={{ color: "#0d9488" }} /> CONCILIACIONES
-            </h3>
-            
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {/* SUB-SECCIÓN BANCOS */}
-              <div>
-                <h4 style={{ fontSize: 11, fontWeight: 900, color: "#0d9488", marginBottom: 8, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#0d9488" }} /> BANCOS
-                </h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {TIPOS_DOCUMENTO.filter(t => t.categoria === "bancos").map((tipo) => (
-                    <TipoDocCard
-                      key={tipo.id}
-                      tipo={tipo}
-                      archivos={lote.documentos[tipo.id] ?? []}
-                      onAgregar={(arch) => onAgregarArchivo(tipo.id, arch)}
-                      onEliminar={(id) => onEliminarArchivo(tipo.id, id)}
-                      onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
-                      onVer={setVisorArchivo}
-                      nombreProveedor={lote.proveedor}
-                      alertaConsecutivo={alertasConsecutivos[tipo.id]}
-                    />
-                  ))}
-                </div>
-              </div>
+        {/* === VISTA LISTA (modo clásico con desplegables) === */}
+        {vistaModo === "list" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
-              {/* SUB-SECCIÓN CAJA */}
-              <div>
-                <h4 style={{ fontSize: 11, fontWeight: 900, color: "#65a30d", marginBottom: 8, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#65a30d" }} /> CAJA
-                </h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {TIPOS_DOCUMENTO.filter(t => t.categoria === "caja").map((tipo) => (
-                    <TipoDocCard
-                      key={tipo.id}
-                      tipo={tipo}
-                      archivos={lote.documentos[tipo.id] ?? []}
-                      onAgregar={(arch) => onAgregarArchivo(tipo.id, arch)}
-                      onEliminar={(id) => onEliminarArchivo(tipo.id, id)}
-                      onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
-                      onVer={setVisorArchivo}
-                      nombreProveedor={lote.proveedor}
-                      alertaConsecutivo={alertasConsecutivos[tipo.id]}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* SUB-SECCIÓN OTROS CONCILIACIONES */}
-              {TIPOS_DOCUMENTO.some(t => t.categoria === "conciliaciones") && (
-                <div>
-                  <h4 style={{ fontSize: 11, fontWeight: 900, color: "#4f46e5", marginBottom: 8, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#4f46e5" }} /> GENERALES (CONCILIACIONES)
-                  </h4>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {TIPOS_DOCUMENTO.filter(t => t.categoria === "conciliaciones").map((tipo) => (
-                      <TipoDocCard
-                        key={tipo.id}
-                        tipo={tipo}
-                        archivos={lote.documentos[tipo.id] ?? []}
-                        onAgregar={(arch) => onAgregarArchivo(tipo.id, arch)}
-                        onEliminar={(id) => onEliminarArchivo(tipo.id, id)}
-                        onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
-                        onVer={setVisorArchivo}
-                        nombreProveedor={lote.proveedor}
-                        alertaConsecutivo={alertasConsecutivos[tipo.id]}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* SECCIÓN OTROS */}
-          {TIPOS_DOCUMENTO.some(t => t.categoria === "otros") && (
+            {/* SECCIÓN COMPROBANTES */}
             <div>
-              <h3 style={{ fontSize: 13, fontWeight: 900, color: "#64748b", marginBottom: 10 }}>
-                 Otros Documentos
+              <h3 style={{ fontSize: 13, fontWeight: 900, color: "#475569", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 6 }}>
+                 <Folder size={15} style={{ color: "#f59e0b" }} /> Comprobantes Contables
               </h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {TIPOS_DOCUMENTO.filter(t => t.categoria === "otros").map((tipo) => (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {TIPOS_DOCUMENTO.filter(t => t.categoria === "comprobantes").map((tipo) => (
                   <TipoDocCard
                     key={tipo.id}
                     tipo={tipo}
@@ -563,9 +675,104 @@ export function VistaLote({
                 ))}
               </div>
             </div>
-          )}
 
-        </div>
+            {/* SECCIÓN CONCILIACIONES */}
+            <div style={{ background: "#f8fafc", padding: "20px", borderRadius: 20, border: "2px solid #e2e8f0" }}>
+              <h3 style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", marginBottom: 18, display: "flex", alignItems: "center", gap: 8 }}>
+                 <CheckCircle2 size={18} style={{ color: "#0d9488" }} /> CONCILIACIONES
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                <div>
+                  <h4 style={{ fontSize: 11, fontWeight: 900, color: "#0d9488", marginBottom: 8, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#0d9488" }} /> BANCOS
+                  </h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {TIPOS_DOCUMENTO.filter(t => t.categoria === "bancos").map((tipo) => (
+                      <TipoDocCard
+                        key={tipo.id}
+                        tipo={tipo}
+                        archivos={lote.documentos[tipo.id] ?? []}
+                        onAgregar={(arch) => onAgregarArchivo(tipo.id, arch)}
+                        onEliminar={(id) => onEliminarArchivo(tipo.id, id)}
+                        onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
+                        onVer={setVisorArchivo}
+                        nombreProveedor={lote.proveedor}
+                        alertaConsecutivo={alertasConsecutivos[tipo.id]}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 style={{ fontSize: 11, fontWeight: 900, color: "#65a30d", marginBottom: 8, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#65a30d" }} /> CAJA
+                  </h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {TIPOS_DOCUMENTO.filter(t => t.categoria === "caja").map((tipo) => (
+                      <TipoDocCard
+                        key={tipo.id}
+                        tipo={tipo}
+                        archivos={lote.documentos[tipo.id] ?? []}
+                        onAgregar={(arch) => onAgregarArchivo(tipo.id, arch)}
+                        onEliminar={(id) => onEliminarArchivo(tipo.id, id)}
+                        onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
+                        onVer={setVisorArchivo}
+                        nombreProveedor={lote.proveedor}
+                        alertaConsecutivo={alertasConsecutivos[tipo.id]}
+                      />
+                    ))}
+                  </div>
+                </div>
+                {TIPOS_DOCUMENTO.some(t => t.categoria === "conciliaciones") && (
+                  <div>
+                    <h4 style={{ fontSize: 11, fontWeight: 900, color: "#4f46e5", marginBottom: 8, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#4f46e5" }} /> GENERALES
+                    </h4>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {TIPOS_DOCUMENTO.filter(t => t.categoria === "conciliaciones").map((tipo) => (
+                        <TipoDocCard
+                          key={tipo.id}
+                          tipo={tipo}
+                          archivos={lote.documentos[tipo.id] ?? []}
+                          onAgregar={(arch) => onAgregarArchivo(tipo.id, arch)}
+                          onEliminar={(id) => onEliminarArchivo(tipo.id, id)}
+                          onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
+                          onVer={setVisorArchivo}
+                          nombreProveedor={lote.proveedor}
+                          alertaConsecutivo={alertasConsecutivos[tipo.id]}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* SECCIÓN OTROS */}
+            {TIPOS_DOCUMENTO.some(t => t.categoria === "otros") && (
+              <div>
+                <h3 style={{ fontSize: 13, fontWeight: 900, color: "#64748b", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                   <Folder size={15} style={{ color: "#64748b" }} /> Otros Documentos
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {TIPOS_DOCUMENTO.filter(t => t.categoria === "otros").map((tipo) => (
+                    <TipoDocCard
+                      key={tipo.id}
+                      tipo={tipo}
+                      archivos={lote.documentos[tipo.id] ?? []}
+                      onAgregar={(arch) => onAgregarArchivo(tipo.id, arch)}
+                      onEliminar={(id) => onEliminarArchivo(tipo.id, id)}
+                      onActualizarArchivos={(nuevosArchs) => onActualizarArchivosDoc(tipo.id, nuevosArchs)}
+                      onVer={setVisorArchivo}
+                      nombreProveedor={lote.proveedor}
+                      alertaConsecutivo={alertasConsecutivos[tipo.id]}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </motion.div>
   );

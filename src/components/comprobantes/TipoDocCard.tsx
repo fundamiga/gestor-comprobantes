@@ -15,6 +15,9 @@ import {
   Check,
   X,
   GripVertical,
+  Folder,
+  FolderOpen,
+  FolderCheck,
 } from "lucide-react";
 import { Reorder } from "framer-motion";
 import type { ArchivoSubido, TipoDocumento } from "@/types";
@@ -29,6 +32,7 @@ interface TipoDocCardProps {
   onVer: (archivo: ArchivoSubido) => void;
   nombreProveedor: string;
   alertaConsecutivo?: { faltantes: number[]; repetidos: number[]; presentes: number[] };
+  defaultOpen?: boolean;
 }
 
 interface GrupoPareja {
@@ -46,8 +50,9 @@ export function TipoDocCard({
   onVer,
   nombreProveedor,
   alertaConsecutivo,
+  defaultOpen,
 }: TipoDocCardProps) {
-  const [abierto, setAbierto] = useState(false);
+  const [abierto, setAbierto] = useState(defaultOpen ?? false);
   const [gruposVacios, setGruposVacios] = useState<{ id: string; nombre: string }[]>([]);
   const [renombrandoId, setRenombrandoId] = useState<string | null>(null);
   const [nuevoNombreText, setNuevoNombreText] = useState("");
@@ -333,20 +338,31 @@ export function TipoDocCard({
 
   return (
     <div
+      className="win-folder-card"
       style={{
-        border: `1.5px solid ${tiene ? tipo.color + "40" : "#e2e8f0"}`,
-        borderRadius: 14,
-        overflow: "hidden",
-        background: tiene ? `${tipo.color}03` : "#fff",
-        transition: "border-color 0.2s, background 0.2s",
+        borderColor: tiene ? `${tipo.color}80` : "#cbd5e1",
+        background: tiene ? `${tipo.color}04` : "#ffffff",
       }}
     >
+      {/* Solapa / Pestaña superior de Carpeta de Windows */}
+      <div
+        className="win-folder-tab"
+        style={{
+          background: tiene ? tipo.color : "#f59e0b",
+          color: "#ffffff",
+          borderColor: tiene ? tipo.color : "#d97706",
+          boxShadow: "0 -2px 6px rgba(0,0,0,0.06)",
+        }}
+      >
+        <Folder size={10} style={{ color: "#fff" }} /> CARPETA {tipo.id}
+      </div>
+
       {/* Header del card principal */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          padding: "12px 16px",
+          padding: "16px 16px 12px 16px",
           cursor: "pointer",
           gap: 12,
           userSelect: "none",
@@ -355,21 +371,40 @@ export function TipoDocCard({
       >
         <div
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
+            width: 44,
+            height: 40,
+            borderRadius: "6px 12px 12px 12px",
             flexShrink: 0,
-            background: tiene ? tipo.color : "#f1f5f9",
+            background: tiene ? `${tipo.color}15` : "#fffbea",
+            border: `1.5px solid ${tiene ? tipo.color : "#fcd34d"}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            transition: "background 0.2s",
+            transition: "all 0.2s",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
+            position: "relative",
           }}
         >
-          {tiene ? (
-            <CheckCircle size={17} style={{ color: "#fff" }} />
+          {abierto ? (
+            <FolderOpen size={22} style={{ color: tiene ? tipo.color : "#d97706" }} />
+          ) : tiene ? (
+            <FolderCheck size={22} style={{ color: tipo.color }} />
           ) : (
-            <FileText size={17} style={{ color: "#94a3b8" }} />
+            <Folder size={22} style={{ color: "#d97706" }} />
+          )}
+          {tiene && (
+            <span
+              style={{
+                position: "absolute",
+                top: -3,
+                right: -3,
+                width: 9,
+                height: 9,
+                borderRadius: "50%",
+                background: "#10b981",
+                border: "2px solid #fff",
+              }}
+            />
           )}
         </div>
 
@@ -687,15 +722,15 @@ export function TipoDocCard({
                       <Reorder.Item
                         key={grupo.id}
                         value={grupo.id}
+                        className="win-subfolder"
                         style={{
-                          background: "#f8fafc",
-                          border: `1.5px solid ${gFaltaPareja ? "#fde68a" : "#e2e8f0"}`,
-                          borderRadius: 12,
+                          borderLeftColor: gFaltaPareja ? "#f59e0b" : tipo.color,
+                          borderColor: gFaltaPareja ? "#fde68a" : "#e2e8f0",
                           padding: "14px",
                           position: "relative",
                         }}
                       >
-                        {/* Cabecera de la Pareja */}
+                        {/* Cabecera de la Pareja / Subcarpeta */}
                         <div
                           style={{
                             display: "flex",
@@ -710,6 +745,7 @@ export function TipoDocCard({
                             <div title="Arrastra desde aquí para cambiar el orden" style={{ cursor: "grab", color: "#94a3b8", display: "flex" }}>
                               <GripVertical size={16} />
                             </div>
+                            <Folder size={16} style={{ color: "#f59e0b" }} fill="#fef3c7" />
                             {esRenombrando ? (
                               <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", maxWidth: 300 }}>
                                 <input

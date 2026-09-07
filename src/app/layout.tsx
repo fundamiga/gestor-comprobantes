@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
+import { ChatAsistente } from "@/components/Asistente/ChatAsistente";
 
 export const metadata: Metadata = {
   title: "Gestor de Comprobantes — Fundamiga",
@@ -16,6 +17,7 @@ export default function RootLayout({
     <html lang="es">
       <body>
         {children}
+        <ChatAsistente />
         <Toaster richColors position="top-right" closeButton />
       </body>
     </html>

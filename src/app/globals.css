@@ -47,3 +47,69 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.25s ease both;
 }
+
+/* ── Estilos de Carpetas tipo Windows Explorer ── */
+.win-folder-card {
+  position: relative;
+  border-radius: 0 16px 16px 16px;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-top: 14px;
+}
+
+.win-folder-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+.win-folder-tab {
+  position: absolute;
+  top: -14px;
+  left: -2px;
+  height: 16px;
+  padding: 0 16px;
+  border-radius: 10px 10px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-top: 2px solid;
+  border-left: 2px solid;
+  border-right: 2px solid;
+  z-index: 2;
+}
+
+.win-subfolder {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-left: 5px solid #f59e0b;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.win-subfolder:hover {
+  border-color: #cbd5e1;
+  border-left-color: #d97706;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.win-address-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
