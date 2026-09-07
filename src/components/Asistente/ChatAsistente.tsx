@@ -5,12 +5,21 @@ import { MessageCircle, X, Send, Loader2, Download, Bot, User } from "lucide-rea
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
+interface ArchivoPDFItem {
+  url: string;
+  nombre: string;
+  persona: string;
+  valor: number;
+  firmaUrl: string | null;
+}
+
 interface Mensaje {
   id: string;
   rol: "user" | "assistant";
   texto: string;
   pdfUrl?: string;
   pdfNombre?: string;
+  archivosPdf?: ArchivoPDFItem[];
 }
 
 interface DatosCuenta {
@@ -87,24 +96,38 @@ export function ChatAsistente() {
         throw new Error(data.error || "Error desconocido");
       }
 
-      if (data.tipo === "cuenta_cobro" && data.datos) {
-        // Primero mostrar el mensaje de confirmación
+      const listaCuentas: DatosCuenta[] = data.cuentas || (data.datos ? [data.datos] : []);
+
+      if (listaCuentas.length > 0) {
+        // Mensaje de confirmación
         const msgConfirm: Mensaje = {
           id: Date.now().toString() + "_c",
           rol: "assistant",
-          texto: data.mensaje,
+          texto: data.mensaje || `✅ Generando ${listaCuentas.length} cuenta(s) de cobro...`,
         };
         setMensajes((prev) => [...prev, msgConfirm]);
 
-        // Generar el PDF
-        const pdf = await generarPDF(data.datos);
-        if (pdf) {
+        // Generar los PDFs para cada persona
+        const generados: ArchivoPDFItem[] = [];
+        for (const c of listaCuentas) {
+          const pdf = await generarPDF(c);
+          if (pdf) {
+            generados.push({
+              url: pdf.url,
+              nombre: pdf.nombre,
+              persona: c.nombre,
+              valor: c.valor,
+              firmaUrl: c.firmaUrl,
+            });
+          }
+        }
+
+        if (generados.length > 0) {
           const msgPdf: Mensaje = {
             id: Date.now().toString() + "_pdf",
             rol: "assistant",
-            texto: `📄 La cuenta de cobro de **${data.datos.nombre}** por **$${data.datos.valor.toLocaleString("es-CO")}** está lista.${data.datos.firmaUrl ? " ✍️ Firma adjuntada automáticamente." : " ⚠️ No se encontró firma en el sistema."}`,
-            pdfUrl: pdf.url,
-            pdfNombre: pdf.nombre,
+            texto: `📄 ¡Listo! Se generaron con éxito **${generados.length}** cuenta(s) de cobro:`,
+            archivosPdf: generados,
           };
           setMensajes((prev) => [...prev, msgPdf]);
         }
@@ -247,7 +270,8 @@ export function ChatAsistente() {
                     border: msg.rol === "assistant" ? "1px solid #e2e8f0" : "none",
                   }}>
                     {renderTexto(msg.texto)}
-                    {msg.pdfUrl && (
+                    {/* Descarga individual antigua */}
+                    {msg.pdfUrl && !msg.archivosPdf && (
                       <a
                         href={msg.pdfUrl}
                         download={msg.pdfNombre}
@@ -267,6 +291,42 @@ export function ChatAsistente() {
                       >
                         <Download size={14} /> Descargar PDF
                       </a>
+                    )}
+
+                    {/* Descargas múltiples individuales por persona */}
+                    {msg.archivosPdf && msg.archivosPdf.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+                        {msg.archivosPdf.map((arch, idx) => (
+                          <a
+                            key={idx}
+                            href={arch.url}
+                            download={arch.nombre}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: 10,
+                              background: "#10b981",
+                              color: "#fff",
+                              borderRadius: 10,
+                              padding: "9px 12px",
+                              fontSize: 12,
+                              fontWeight: 800,
+                              textDecoration: "none",
+                              boxShadow: "0 2px 6px rgba(16,185,129,0.25)",
+                              transition: "transform 0.15s",
+                            }}
+                          >
+                            <span style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <Download size={15} style={{ flexShrink: 0 }} />
+                              {arch.persona} (${arch.valor.toLocaleString("es-CO")})
+                            </span>
+                            <span style={{ fontSize: 10, background: "rgba(255,255,255,0.2)", padding: "2px 6px", borderRadius: 6, flexShrink: 0 }}>
+                              {arch.firmaUrl ? "✍️ Con firma" : "⚠️ Sin firma"}
+                            </span>
+                          </a>
+                        ))}
+                      </div>
                     )}
                   </div>
                   {msg.rol === "user" && (

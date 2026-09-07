@@ -26,15 +26,15 @@ PUEDES HACER:
 1. Responder preguntas sobre el sistema, documentos, procesos contables.
 2. Generar cuentas de cobro en PDF cuando el usuario lo pida.
 
-PARA GENERAR CUENTA DE COBRO necesitas extraer del mensaje:
-- nombre: nombre completo del proveedor
-- valor: monto en pesos colombianos (número entero)
-- concepto: descripción del servicio prestado
+PARA GENERAR CUENTAS DE COBRO:
+- Si el usuario pide cuentas de cobro para una o VARIAS personas (por ejemplo: "genera para Melissa, Noe y Kevin"), debes procesarlas TODAS juntas en una sola respuesta.
+- Si da un solo valor general (por ejemplo: "de 50.000"), aplícalo a cada persona.
+- Concepto: si el usuario no especifica concepto o dice "déjalo como está", "lo de siempre", usa por defecto "Honorarios y servicios".
+- Si falta el valor en pesos, pregúntale amablemente por el valor.
+- Cuando tengas los datos, responde EXACTAMENTE en este formato JSON (sin markdown, sin texto adicional):
+{"accion":"generar_cuentas","cuentas":[{"nombre":"NOMBRE 1","valor":50000,"concepto":"Honorarios y servicios"},{"nombre":"NOMBRE 2","valor":50000,"concepto":"Honorarios y servicios"}]}
 
-Cuando tengas los 3 datos requeridos (nombre, valor y concepto), responde EXACTAMENTE en este formato JSON (sin markdown, sin texto adicional):
-{"accion":"generar_cuenta","nombre":"NOMBRE COMPLETO","valor":000000,"concepto":"descripción del concepto"}
-
-Si falta el valor o el concepto, sé amable y pregúntale al usuario por el dato que falta para poder generar el documento.
+(Nota: si es una sola persona, ponla también dentro de la lista "cuentas" con 1 elemento).
 
 REGLAS:
 - Responde siempre en español colombiano, claro y profesional.
@@ -113,80 +113,112 @@ export async function POST(req: NextRequest) {
     }
 
     // Detectar si la respuesta es un JSON de acción
-    const jsonMatch = respuestaTexto.match(/\{[\s\S]*?"accion"\s*:\s*"generar_cuenta"[\s\S]*?\}/) || respuestaTexto.match(/\{[\s\S]*?\}/);
+    const jsonMatch = respuestaTexto.match(/\{[\s\S]*?"accion"\s*:\s*"generar_cuenta[s]?"[\s\S]*?\}/) || respuestaTexto.match(/\{[\s\S]*?\}/);
     if (jsonMatch) {
       try {
         const accion = JSON.parse(jsonMatch[0]);
-        if (accion.accion === "generar_cuenta") {
-          let nombreFinal = accion.nombre;
-          let cedula = "Por definir";
+        const listaItems: { nombre: string; valor: number; concepto?: string }[] = [];
 
-          // 1. Buscar proveedor en Supabase con coincidencia flexible por palabras
-          try {
-            const palabras = accion.nombre.trim().split(/\s+/).filter((p: string) => p.length > 1);
-            const patron = palabras.map((p: string) => encodeURIComponent(p)).join("%25");
-            const sbUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/proveedores?nombre=ilike.%25${patron}%25&select=nombre,cedula&limit=1`;
-            
-            const sbRes = await fetch(sbUrl, {
-              headers: {
-                apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-                Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""}`,
-              },
-            });
-            const sbData = await sbRes.json();
-            if (sbData?.[0]) {
-              if (sbData[0].nombre) nombreFinal = sbData[0].nombre;
-              if (sbData[0].cedula) cedula = sbData[0].cedula;
+        if (accion.accion === "generar_cuentas" && Array.isArray(accion.cuentas)) {
+          listaItems.push(...accion.cuentas);
+        } else if (accion.accion === "generar_cuenta") {
+          listaItems.push({
+            nombre: accion.nombre,
+            valor: accion.valor,
+            concepto: accion.concepto,
+          });
+        }
+
+        if (listaItems.length > 0) {
+          const resolverCuenta = async (item: { nombre: string; valor: number; concepto?: string }) => {
+            let nombreFinal = item.nombre;
+            let cedula = "Por definir";
+
+            // 1. Buscar en Supabase (coincidencia flexible sin importar el orden de las palabras)
+            try {
+              const palabras = item.nombre.trim().split(/\s+/).filter((p: string) => p.length >= 2);
+              let query = "";
+              if (palabras.length > 1) {
+                const conditions = palabras.map((p: string) => `nombre.ilike.%25${encodeURIComponent(p)}%25`).join(",");
+                query = `and=(${conditions})`;
+              } else if (palabras.length === 1) {
+                query = `nombre=ilike.%25${encodeURIComponent(palabras[0])}%25`;
+              }
+
+              if (query) {
+                const sbUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/proveedores?${query}&select=nombre,cedula&limit=1`;
+                const sbRes = await fetch(sbUrl, {
+                  headers: {
+                    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+                    Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""}`,
+                  },
+                });
+                const sbData = await sbRes.json();
+                if (sbData?.[0]) {
+                  if (sbData[0].nombre) nombreFinal = sbData[0].nombre;
+                  if (sbData[0].cedula) cedula = sbData[0].cedula;
+                }
+              }
+            } catch (e) {
+              console.warn("No se pudo consultar Supabase para", item.nombre, e);
             }
-          } catch (e) {
-            console.warn("No se pudo consultar Supabase para la cédula:", e);
-          }
 
-          // 2. Buscar firma en Cloudinary (probando tanto el nombre oficial como el escrito)
-          let firmaUrl: string | null = null;
-          const nombresABuscar = Array.from(new Set([nombreFinal, accion.nombre]));
-          const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME_FIRMAS || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "ddbti1112";
-          const subCarpetas = ["trabajadors", "supervisors", "responsable_conteos", ""];
+            // 2. Buscar firma en Cloudinary (probando tanto el nombre oficial como el escrito y sus partes)
+            let firmaUrl: string | null = null;
+            const nombresABuscar = Array.from(new Set([nombreFinal, item.nombre]));
+            const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME_FIRMAS || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "ddbti1112";
+            const subCarpetas = ["trabajadors", "supervisors", "responsable_conteos", ""];
 
-          for (const nom of nombresABuscar) {
-            if (firmaUrl) break;
-            const variantes = [
-              nom.trim(),
-              nom.trim().replace(/\s+/g, '_'),
-              nom.trim().toLowerCase().replace(/\s+/g, '_'),
-              nom.trim().replace(/\s+/g, '-'),
-              nom.trim().toLowerCase().replace(/\s+/g, '-')
-            ];
-
-            for (const sc of subCarpetas) {
+            for (const nom of nombresABuscar) {
               if (firmaUrl) break;
-              const sub = sc ? `${sc}/` : "";
-              for (const v of variantes) {
+              const variantes = [
+                nom.trim(),
+                nom.trim().replace(/\s+/g, "_"),
+                nom.trim().toLowerCase().replace(/\s+/g, "_"),
+                nom.trim().replace(/\s+/g, "-"),
+                nom.trim().toLowerCase().replace(/\s+/g, "-"),
+                // Si el nombre es largo, también probar primer nombre y apellido
+                ...nom.trim().split(/\s+/).length > 2 ? [
+                  `${nom.trim().split(/\s+/)[0]} ${nom.trim().split(/\s+/).slice(-1)[0]}`,
+                  `${nom.trim().split(/\s+/)[0]}_${nom.trim().split(/\s+/).slice(-1)[0]}`,
+                  `${nom.trim().split(/\s+/).slice(-1)[0]}_${nom.trim().split(/\s+/)[0]}`,
+                ] : []
+              ];
+
+              for (const sc of subCarpetas) {
                 if (firmaUrl) break;
-                for (const ext of ["png", "jpg", "jpeg"]) {
-                  const urlPrueba = `https://res.cloudinary.com/${cloudName}/image/upload/firmas/${sub}${encodeURIComponent(v)}.${ext}`;
-                  try {
-                    const checkRes = await fetch(urlPrueba, { method: "HEAD" });
-                    if (checkRes.ok) {
-                      firmaUrl = urlPrueba;
-                      break;
-                    }
-                  } catch (e) {}
+                const sub = sc ? `${sc}/` : "";
+                for (const v of variantes) {
+                  if (firmaUrl) break;
+                  for (const ext of ["png", "jpg", "jpeg"]) {
+                    const urlPrueba = `https://res.cloudinary.com/${cloudName}/image/upload/firmas/${sub}${encodeURIComponent(v)}.${ext}`;
+                    try {
+                      const checkRes = await fetch(urlPrueba, { method: "HEAD" });
+                      if (checkRes.ok) {
+                        firmaUrl = urlPrueba;
+                        break;
+                      }
+                    } catch (e) {}
+                  }
                 }
               }
             }
-          }
 
-          return NextResponse.json({
-            tipo: "cuenta_cobro",
-            mensaje: `✅ Datos encontrados para **${nombreFinal}** (C.C. ${cedula}). Generando cuenta de cobro por **$${Number(accion.valor).toLocaleString('es-CO')}**...`,
-            datos: {
+            return {
               nombre: nombreFinal,
               cedula,
-              valor: accion.valor,
-              concepto: accion.concepto,
+              valor: item.valor || 0,
+              concepto: item.concepto || "Honorarios y servicios",
               firmaUrl,
-            },
+            };
+          };
+
+          const cuentasResueltas = await Promise.all(listaItems.map(resolverCuenta));
+
+          return NextResponse.json({
+            tipo: "cuentas_cobro",
+            mensaje: `✅ Encontré los datos para **${cuentasResueltas.length}** persona(s). Generando las cuentas de cobro...`,
+            cuentas: cuentasResueltas,
           });
         }
       } catch (_) {}
