@@ -5,6 +5,7 @@ import { useState, useRef, useCallback, Fragment } from "react";
 import {
   FileText,
   CheckCircle,
+  CheckCircle2,
   ChevronRight,
   ChevronDown,
   AlertCircle,
@@ -60,6 +61,14 @@ export function TipoDocCard({
   const [ordenIds, setOrdenIds] = useState<string[]>([]);
   const [numeroSiguiente, setNumeroSiguiente] = useState<string>("");
   const [guardadoOk, setGuardadoOk] = useState(false);
+  const [parejasAbiertas, setParejasAbiertas] = useState<{ [grupoId: string]: boolean }>({});
+
+  const toggleParejaAbierta = (id: string) => {
+    setParejasAbiertas((prev) => ({
+      ...prev,
+      [id]: prev[id] !== undefined ? !prev[id] : false,
+    }));
+  };
 
   // Refs para auto-guardado sin problemas de stale closures
   const archivosRef = useRef(archivos);
@@ -338,24 +347,16 @@ export function TipoDocCard({
 
   return (
     <div
-      className="win-folder-card"
+      className="drive-folder-card"
       style={{
-        borderColor: tiene ? `${tipo.color}80` : "#cbd5e1",
-        background: tiene ? `${tipo.color}04` : "#ffffff",
+        border: `1.5px solid ${tiene ? tipo.color + "45" : "#dadce0"}`,
+        borderRadius: 16,
+        background: "#ffffff",
+        overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(60,64,67,0.08)",
+        cursor: "default",
       }}
     >
-      {/* Solapa / Pestaña superior de Carpeta de Windows */}
-      <div
-        className="win-folder-tab"
-        style={{
-          background: tiene ? tipo.color : "#f59e0b",
-          color: "#ffffff",
-          borderColor: tiene ? tipo.color : "#d97706",
-          boxShadow: "0 -2px 6px rgba(0,0,0,0.06)",
-        }}
-      >
-        <Folder size={10} style={{ color: "#fff" }} /> CARPETA {tipo.id}
-      </div>
 
       {/* Header del card principal */}
       <div
@@ -630,11 +631,56 @@ export function TipoDocCard({
                   </div>
                 </div>
               )}
+              {/* Barra de cabecera de las parejas */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 12,
+                  marginTop: 6,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Folder size={15} style={{ color: "#5f6368" }} />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#444746" }}>
+                    Carpetas de Parejas ({renderGrupos.length})
+                  </span>
+                </div>
+
+                {renderGrupos.length > 1 && (
+                  <button
+                    onClick={() => {
+                      const allOpen = renderGrupos.every((g) => parejasAbiertas[g.id] !== false);
+                      const updated: { [id: string]: boolean } = {};
+                      renderGrupos.forEach((g) => {
+                        updated[g.id] = !allOpen;
+                      });
+                      setParejasAbiertas(updated);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#1a73e8",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      padding: "2px 6px",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {renderGrupos.every((g) => parejasAbiertas[g.id] !== false)
+                      ? "Colapsar todas"
+                      : "Expandir todas"}
+                  </button>
+                )}
+              </div>
+
               <Reorder.Group 
                  axis="y" 
                  values={currentIds} 
                  onReorder={handleReorder} 
-                 style={{ display: "flex", flexDirection: "column", gap: 14, margin: 0, padding: 0, listStyle: "none" }}
+                 style={{ display: "flex", flexDirection: "column", gap: 12, margin: 0, padding: 0, listStyle: "none" }}
               >
                 {/* Botón para insertar antes de la primera pareja */}
                 {renderGrupos.length > 0 && (
@@ -678,6 +724,7 @@ export function TipoDocCard({
                   const gFaltaPareja = count === 1;
                   const gEsImparExtra = count >= 3 && count % 2 !== 0;
                   const uploadExtra = extraUploadActivo[grupo.id] ?? false;
+                  const esAbierta = parejasAbiertas[grupo.id] ?? true;
 
                   // Extraer el número consecutivo de esta pareja
                   let numGrupo: number | null = null;
@@ -722,32 +769,55 @@ export function TipoDocCard({
                       <Reorder.Item
                         key={grupo.id}
                         value={grupo.id}
-                        className="win-subfolder"
+                        className="drive-subfolder"
                         style={{
-                          borderLeftColor: gFaltaPareja ? "#f59e0b" : tipo.color,
-                          borderColor: gFaltaPareja ? "#fde68a" : "#e2e8f0",
-                          padding: "14px",
+                          border: `1px solid ${gFaltaPareja ? "#fde68a" : count >= 2 ? "#bbf7d0" : "#dadce0"}`,
+                          borderRadius: 14,
+                          background: "#ffffff",
                           position: "relative",
+                          boxShadow: "0 1px 3px rgba(60,64,67,0.06)",
                         }}
                       >
-                        {/* Cabecera de la Pareja / Subcarpeta */}
+                        {/* Cabecera de la Pareja estilo Carpeta Google Drive */}
                         <div
                           style={{
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "space-between",
-                            marginBottom: 10,
+                            padding: "12px 14px",
+                            background: gFaltaPareja ? "#fffdf5" : count >= 2 ? "#fafffd" : "#ffffff",
+                            borderBottom: esAbierta ? "1px solid #f1f5f9" : "none",
                             gap: 10,
-                            flexWrap: "wrap",
+                            cursor: "pointer",
+                            userSelect: "none",
+                            transition: "background 0.15s ease",
                           }}
+                          onClick={() => toggleParejaAbierta(grupo.id)}
                         >
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
-                            <div title="Arrastra desde aquí para cambiar el orden" style={{ cursor: "grab", color: "#94a3b8", display: "flex" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                            <div
+                              title="Arrastra desde aquí para cambiar el orden"
+                              style={{ cursor: "grab", color: "#94a3b8", display: "flex", alignItems: "center" }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <GripVertical size={16} />
                             </div>
-                            <Folder size={16} style={{ color: "#f59e0b" }} fill="#fef3c7" />
+
+                            {/* Ícono de Carpeta Drive */}
+                            <Folder
+                              size={24}
+                              style={{
+                                color: gFaltaPareja ? "#f59e0b" : count >= 2 ? "#10b981" : "#94a3b8",
+                                fill: `${gFaltaPareja ? "#f59e0b" : count >= 2 ? "#10b981" : "#94a3b8"}22`,
+                                flexShrink: 0,
+                              }}
+                            />
+
                             {esRenombrando ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", maxWidth: 300 }}>
+                              <div
+                                style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", maxWidth: 300 }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <input
                                   type="text"
                                   value={nuevoNombreText}
@@ -798,12 +868,15 @@ export function TipoDocCard({
                                 </button>
                               </div>
                             ) : (
-                              <>
-                        <strong style={{ fontSize: 13, color: "#334155" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flexWrap: "wrap" }}>
+                                <strong style={{ fontSize: 13, color: "#1f1f1f" }}>
                                   {grupo.nombre}
                                 </strong>
                                 <button
-                                  onClick={() => handleRenombrarGrupo(grupo.id, grupo.nombre)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRenombrarGrupo(grupo.id, grupo.nombre);
+                                  }}
                                   title="Cambiar nombre de esta pareja"
                                   style={{
                                     background: "none",
@@ -817,12 +890,65 @@ export function TipoDocCard({
                                 >
                                   <Edit2 size={11} />
                                 </button>
-                              </>
+
+                                {/* Badge de Estado estilo Drive */}
+                                {count >= 2 ? (
+                                  <span
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      background: "#d1fae5",
+                                      color: "#065f46",
+                                      borderRadius: 99,
+                                      padding: "2px 8px",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 4,
+                                    }}
+                                  >
+                                    <CheckCircle2 size={11} />
+                                    {count} archivos · Completa
+                                  </span>
+                                ) : count === 1 ? (
+                                  <span
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      background: "#fef3c7",
+                                      color: "#92400e",
+                                      borderRadius: 99,
+                                      padding: "2px 8px",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 4,
+                                    }}
+                                  >
+                                    <AlertCircle size={11} />
+                                    1 de 2 · Falta soporte
+                                  </span>
+                                ) : (
+                                  <span
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      background: "#f1f5f9",
+                                      color: "#64748b",
+                                      borderRadius: 99,
+                                      padding: "2px 8px",
+                                    }}
+                                  >
+                                    Vacía (0/2)
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
 
                           {/* Botones de acción del grupo */}
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <div
+                            style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             {count >= 2 && (
                               <button
                                 onClick={() => handleCombinarPdfGrupo(grupo)}
@@ -831,17 +957,17 @@ export function TipoDocCard({
                                   alignItems: "center",
                                   gap: 4,
                                   background: "#fff",
-                                  border: "1.5px solid #cbd5e1",
-                                  borderRadius: 8,
-                                  padding: "4px 8px",
+                                  border: "1px solid #dadce0",
+                                  borderRadius: 16,
+                                  padding: "3px 10px",
                                   fontSize: 10,
-                                  fontWeight: 800,
-                                  color: "#475569",
+                                  fontWeight: 700,
+                                  color: "#3c4043",
                                   cursor: "pointer",
                                   fontFamily: "inherit",
                                 }}
                               >
-                                <FileDown size={11} /> Combinar PDF
+                                <FileDown size={11} /> PDF
                               </button>
                             )}
                             <button
@@ -850,149 +976,175 @@ export function TipoDocCard({
                               style={{
                                 background: "none",
                                 border: "none",
-                                color: "#ef4444",
+                                color: "#94a3b8",
                                 cursor: "pointer",
                                 padding: 4,
                                 display: "inline-flex",
                                 alignItems: "center",
+                                borderRadius: 6,
                               }}
+                              onMouseEnter={(e) => (e.currentTarget.style.color = "#ef4444")}
+                              onMouseLeave={(e) => (e.currentTarget.style.color = "#94a3b8")}
                             >
-                              <Trash2 size={13} />
+                              <Trash2 size={14} />
                             </button>
-                          </div>
-                        </div>
-
-                        {/* Advertencia de salto de consecutivo */}
-                        {faltanAntes.length > 0 && (
-                          <div
-                            style={{
-                              background: "#fee2e2",
-                              border: "1px solid #fecaca",
-                              borderRadius: 8,
-                              padding: "8px 12px",
-                              marginBottom: 10,
-                              display: "flex",
-                              alignItems: "flex-start",
-                              gap: 6,
-                              fontSize: 10,
-                              color: "#b91c1c",
-                            }}
-                          >
-                            <AlertCircle size={13} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
-                            <div>
-                              <strong>Salto de secuencia:</strong> Faltan los consecutivos{" "}
-                              <strong>
-                                {faltanAntes.length > 7
-                                  ? `${faltanAntes[0]} al ${faltanAntes[faltanAntes.length - 1]} (${faltanAntes.length} números faltantes)`
-                                  : faltanAntes.join(", ")}
-                              </strong>{" "}
-                              antes de este archivo.
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Advertencia interna del grupo de Consecutivo Repetido */}
-                        {esRepetido && (
-                          <div
-                            style={{
-                              background: "#fee2e2",
-                              border: "1px solid #fecaca",
-                              borderRadius: 8,
-                              padding: "8px 12px",
-                              marginBottom: 10,
-                              display: "flex",
-                              alignItems: "flex-start",
-                              gap: 6,
-                              fontSize: 10,
-                              color: "#b91c1c",
-                            }}
-                          >
-                            <AlertCircle size={13} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
-                            <div>
-                              <strong>Consecutivo repetido:</strong> El número <strong>{numGrupo}</strong> ya está siendo usado por otra pareja u otro lote en este mes.
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Advertencia interna del grupo */}
-                        {gFaltaPareja && (
-                          <div
-                            style={{
-                              background: "#fffbeb",
-                              border: "1px solid #fde68a",
-                              borderRadius: 8,
-                              padding: "8px 12px",
-                              marginBottom: 10,
-                              display: "flex",
-                              alignItems: "flex-start",
-                              gap: 6,
-                              fontSize: 10,
-                              color: "#b45309",
-                            }}
-                          >
-                            <AlertCircle size={13} style={{ color: "#d97706", flexShrink: 0, marginTop: 1 }} />
-                            <div>
-                              <strong>Falta un soporte:</strong> Se requiere subir el archivo complementario de: <strong>{tipo.ayudaPareja}</strong>.
-                            </div>
-                          </div>
-                        )}
-                        {gEsImparExtra && (
-                          <div
-                            style={{
-                              background: "#f0f9ff",
-                              border: "1px solid #bae6fd",
-                              borderRadius: 8,
-                              padding: "8px 12px",
-                              marginBottom: 10,
-                              display: "flex",
-                              alignItems: "flex-start",
-                              gap: 6,
-                              fontSize: 10,
-                              color: "#0369a1",
-                            }}
-                          >
-                            <AlertCircle size={13} style={{ color: "#0284c7", flexShrink: 0, marginTop: 1 }} />
-                            <div>
-                              <strong>Nota sobre archivos impares:</strong> Tienes {count} archivos. Si es un caso especial con soportes adicionales, ignora este aviso.
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Listado de archivos y dropzone de esta pareja */}
-                        <div style={{ marginBottom: count > 0 ? 10 : 0 }}>
-                          <ZonaUpload
-                            tipoDoc={tipo}
-                            archivos={grupo.archivos}
-                            onAgregar={onAgregar}
-                            onEliminar={onEliminar}
-                            onVer={onVer}
-                            grupoId={grupo.id}
-                            grupoNombre={grupo.nombre}
-                            ocultarDropzone={count >= (tipo.minArchivos || 2) && !uploadExtra}
-                          />
-                        </div>
-
-                        {/* Botón para forzar más archivos (Trio/Cuarteto) */}
-                        {count >= (tipo.minArchivos || 2) && (
-                          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                            <button
-                              onClick={() =>
-                                setExtraUploadActivo((prev) => ({ ...prev, [grupo.id]: !uploadExtra }))
-                              }
+                            <div
+                              onClick={() => toggleParejaAbierta(grupo.id)}
                               style={{
-                                background: "none",
-                                border: "none",
-                                color: tipo.color,
-                                fontSize: 10,
-                                fontWeight: 800,
                                 cursor: "pointer",
-                                padding: "4px 0",
-                                textDecoration: "underline",
-                                fontFamily: "inherit",
+                                display: "flex",
+                                alignItems: "center",
+                                color: "#5f6368",
+                                padding: "2px 4px",
                               }}
                             >
-                              {uploadExtra ? "✕ Cerrar subida" : "+ Agregar soporte extra a esta pareja"}
-                            </button>
+                              <ChevronDown
+                                size={16}
+                                style={{
+                                  transform: esAbierta ? "rotate(0deg)" : "rotate(-90deg)",
+                                  transition: "transform 0.2s ease",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Contenido interior de la carpeta de pareja (archivos y dropzone) */}
+                        {esAbierta && (
+                          <div style={{ padding: "14px", background: "#ffffff" }}>
+                            {/* Advertencia de salto de consecutivo */}
+                            {faltanAntes.length > 0 && (
+                              <div
+                                style={{
+                                  background: "#fee2e2",
+                                  border: "1px solid #fecaca",
+                                  borderRadius: 8,
+                                  padding: "8px 12px",
+                                  marginBottom: 10,
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 6,
+                                  fontSize: 10,
+                                  color: "#b91c1c",
+                                }}
+                              >
+                                <AlertCircle size={13} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
+                                <div>
+                                  <strong>Salto de secuencia:</strong> Faltan los consecutivos{" "}
+                                  <strong>
+                                    {faltanAntes.length > 7
+                                      ? `${faltanAntes[0]} al ${faltanAntes[faltanAntes.length - 1]} (${faltanAntes.length} números faltantes)`
+                                      : faltanAntes.join(", ")}
+                                  </strong>{" "}
+                                  antes de este archivo.
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Advertencia interna del grupo de Consecutivo Repetido */}
+                            {esRepetido && (
+                              <div
+                                style={{
+                                  background: "#fee2e2",
+                                  border: "1px solid #fecaca",
+                                  borderRadius: 8,
+                                  padding: "8px 12px",
+                                  marginBottom: 10,
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 6,
+                                  fontSize: 10,
+                                  color: "#b91c1c",
+                                }}
+                              >
+                                <AlertCircle size={13} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
+                                <div>
+                                  <strong>Consecutivo repetido:</strong> El número <strong>{numGrupo}</strong> ya está siendo usado por otra pareja u otro lote en este mes.
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Advertencia interna del grupo */}
+                            {gFaltaPareja && (
+                              <div
+                                style={{
+                                  background: "#fffbeb",
+                                  border: "1px solid #fde68a",
+                                  borderRadius: 8,
+                                  padding: "8px 12px",
+                                  marginBottom: 10,
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 6,
+                                  fontSize: 10,
+                                  color: "#b45309",
+                                }}
+                              >
+                                <AlertCircle size={13} style={{ color: "#d97706", flexShrink: 0, marginTop: 1 }} />
+                                <div>
+                                  <strong>Falta un soporte:</strong> Se requiere subir el archivo complementario de: <strong>{tipo.ayudaPareja}</strong>.
+                                </div>
+                              </div>
+                            )}
+                            {gEsImparExtra && (
+                              <div
+                                style={{
+                                  background: "#f0f9ff",
+                                  border: "1px solid #bae6fd",
+                                  borderRadius: 8,
+                                  padding: "8px 12px",
+                                  marginBottom: 10,
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 6,
+                                  fontSize: 10,
+                                  color: "#0369a1",
+                                }}
+                              >
+                                <AlertCircle size={13} style={{ color: "#0284c7", flexShrink: 0, marginTop: 1 }} />
+                                <div>
+                                  <strong>Nota sobre archivos impares:</strong> Tienes {count} archivos. Si es un caso especial con soportes adicionales, ignora este aviso.
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Listado de archivos y dropzone de esta pareja */}
+                            <div style={{ marginBottom: count > 0 ? 10 : 0 }}>
+                              <ZonaUpload
+                                tipoDoc={tipo}
+                                archivos={grupo.archivos}
+                                onAgregar={onAgregar}
+                                onEliminar={onEliminar}
+                                onVer={onVer}
+                                grupoId={grupo.id}
+                                grupoNombre={grupo.nombre}
+                                ocultarDropzone={count >= (tipo.minArchivos || 2) && !uploadExtra}
+                              />
+                            </div>
+
+                            {/* Botón para forzar más archivos (Trio/Cuarteto) */}
+                            {count >= (tipo.minArchivos || 2) && (
+                              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                                <button
+                                  onClick={() =>
+                                    setExtraUploadActivo((prev) => ({ ...prev, [grupo.id]: !uploadExtra }))
+                                  }
+                                  style={{
+                                    background: "none",
+                                    border: "none",
+                                    color: tipo.color,
+                                    fontSize: 10,
+                                    fontWeight: 800,
+                                    cursor: "pointer",
+                                    padding: "4px 0",
+                                    textDecoration: "underline",
+                                    fontFamily: "inherit",
+                                  }}
+                                >
+                                  {uploadExtra ? "✕ Cerrar subida" : "+ Agregar soporte extra a esta pareja"}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </Reorder.Item>
