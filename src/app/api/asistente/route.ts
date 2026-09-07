@@ -43,6 +43,97 @@ REGLAS:
 - El NIT de Fundamiga es 901.369.891-9.
 - La dirección es Yumbo, Valle del Cauca, Colombia.`;
 
+// ─── CACHÉ Y BÚSQUEDA RÁPIDA DE FIRMAS DE CLOUDINARY ───────────────────────
+let cachedFirmas: { nombre: string; url: string }[] = [];
+let lastFetchFirmas = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos de caché en memoria
+
+async function obtenerTodasLasFirmas(): Promise<{ nombre: string; url: string }[]> {
+  const now = Date.now();
+  if (cachedFirmas.length > 0 && now - lastFetchFirmas < CACHE_TTL_MS) {
+    return cachedFirmas;
+  }
+
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME_FIRMAS || "ddbti1112";
+  const apiKey = process.env.CLOUDINARY_API_KEY_FIRMAS || "763334958941215";
+  const apiSecret = process.env.CLOUDINARY_API_SECRET_FIRMAS || "2umW5FqDTV-P2knCxn4pOKWT790";
+
+  const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString("base64");
+  const subCarpetas = [
+    "firmas/responsable_conteos",
+    "firmas/supervisors",
+    "firmas/trabajadors",
+  ];
+
+  const todas: { nombre: string; url: string }[] = [];
+  await Promise.all(
+    subCarpetas.map(async (carpeta) => {
+      try {
+        const params = new URLSearchParams({
+          type: "upload",
+          prefix: carpeta,
+          max_results: "500",
+        });
+        const res = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloudName}/resources/image?${params.toString()}`,
+          { headers: { Authorization: `Basic ${auth}` } }
+        );
+        const data = await res.json();
+        if (data.resources) {
+          for (const r of data.resources) {
+            todas.push({
+              nombre: (r.display_name || r.public_id.split("/").pop() || "").replace(/_/g, " ").toLowerCase().trim(),
+              url: r.secure_url,
+            });
+          }
+        }
+      } catch (_) {}
+    })
+  );
+
+  if (todas.length > 0) {
+    cachedFirmas = todas;
+    lastFetchFirmas = now;
+  }
+  return cachedFirmas;
+}
+
+function buscarFirmaEnLista(nombres: string[], listaFirmas: { nombre: string; url: string }[]): string | null {
+  for (const nombre of nombres) {
+    if (!nombre) continue;
+    const norm = nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const palabras = norm.split(/\s+/).filter((p) => p.length >= 2);
+
+    // 1. Coincidencia exacta
+    const ex = listaFirmas.find((f) => f.nombre.toLowerCase().trim() === norm);
+    if (ex) return ex.url;
+
+    // 2. Coincidencia si contiene todas las palabras
+    if (palabras.length > 1) {
+      const ct = listaFirmas.find((f) => {
+        const fn = f.nombre.toLowerCase();
+        return palabras.every((p) => fn.includes(p));
+      });
+      if (ct) return ct.url;
+    }
+
+    // 3. Coincidencia si contiene al menos 2 palabras clave
+    if (palabras.length >= 2) {
+      const best = listaFirmas.find((f) => {
+        const fn = f.nombre.toLowerCase();
+        let matches = 0;
+        for (const p of palabras) {
+          if (p.length > 3 && fn.includes(p)) matches++;
+        }
+        return matches >= 2;
+      });
+      if (best) return best.url;
+    }
+  }
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { mensaje, historial } = await req.json();
@@ -145,11 +236,15 @@ export async function POST(req: NextRequest) {
         }
 
         if (listaItems.length > 0) {
+          // 1. Obtener todas las firmas en 1 sola llamada (con caché en memoria)
+          const todasLasFirmas = await obtenerTodasLasFirmas();
+
+          // 2. Resolver cada cuenta en paralelo
           const resolverCuenta = async (item: { nombre: string; valor: number; concepto?: string }) => {
             let nombreFinal = item.nombre;
             let cedula = "Por definir";
 
-            // 1. Buscar en Supabase (coincidencia flexible sin importar orden y con tolerancia a erratas)
+            // Buscar en Supabase (coincidencia flexible sin importar orden y con tolerancia a erratas)
             try {
               const palabras = item.nombre.trim().split(/\s+/).filter((p: string) => p.length >= 2);
               let sbData: any[] = [];
@@ -205,46 +300,8 @@ export async function POST(req: NextRequest) {
               console.warn("No se pudo consultar Supabase para", item.nombre, e);
             }
 
-            // 2. Buscar firma en Cloudinary (probando tanto el nombre oficial como el escrito y sus partes)
-            let firmaUrl: string | null = null;
-            const nombresABuscar = Array.from(new Set([nombreFinal, item.nombre]));
-            const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME_FIRMAS || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "ddbti1112";
-            const subCarpetas = ["trabajadors", "supervisors", "responsable_conteos", ""];
-
-            for (const nom of nombresABuscar) {
-              if (firmaUrl) break;
-              const variantes = [
-                nom.trim(),
-                nom.trim().replace(/\s+/g, "_"),
-                nom.trim().toLowerCase().replace(/\s+/g, "_"),
-                nom.trim().replace(/\s+/g, "-"),
-                nom.trim().toLowerCase().replace(/\s+/g, "-"),
-                // Si el nombre es largo, también probar primer nombre y apellido
-                ...nom.trim().split(/\s+/).length > 2 ? [
-                  `${nom.trim().split(/\s+/)[0]} ${nom.trim().split(/\s+/).slice(-1)[0]}`,
-                  `${nom.trim().split(/\s+/)[0]}_${nom.trim().split(/\s+/).slice(-1)[0]}`,
-                  `${nom.trim().split(/\s+/).slice(-1)[0]}_${nom.trim().split(/\s+/)[0]}`,
-                ] : []
-              ];
-
-              for (const sc of subCarpetas) {
-                if (firmaUrl) break;
-                const sub = sc ? `${sc}/` : "";
-                for (const v of variantes) {
-                  if (firmaUrl) break;
-                  for (const ext of ["png", "jpg", "jpeg"]) {
-                    const urlPrueba = `https://res.cloudinary.com/${cloudName}/image/upload/firmas/${sub}${encodeURIComponent(v)}.${ext}`;
-                    try {
-                      const checkRes = await fetch(urlPrueba, { method: "HEAD" });
-                      if (checkRes.ok) {
-                        firmaUrl = urlPrueba;
-                        break;
-                      }
-                    } catch (e) {}
-                  }
-                }
-              }
-            }
+            // Buscar firma en memoria al instante (0 ms)
+            const firmaUrl = buscarFirmaEnLista([item.nombre, nombreFinal], todasLasFirmas);
 
             return {
               nombre: nombreFinal,

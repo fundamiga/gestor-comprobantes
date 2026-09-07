@@ -107,20 +107,23 @@ export function ChatAsistente() {
         };
         setMensajes((prev) => [...prev, msgConfirm]);
 
-        // Generar los PDFs para cada persona
-        const generados: ArchivoPDFItem[] = [];
-        for (const c of listaCuentas) {
-          const pdf = await generarPDF(c);
-          if (pdf) {
-            generados.push({
-              url: pdf.url,
-              nombre: pdf.nombre,
-              persona: c.nombre,
-              valor: c.valor,
-              firmaUrl: c.firmaUrl,
-            });
-          }
-        }
+        // Generar los PDFs para todas las personas en PARALELO
+        const resultados = await Promise.all(
+          listaCuentas.map(async (c) => {
+            const pdf = await generarPDF(c);
+            if (pdf) {
+              return {
+                url: pdf.url,
+                nombre: pdf.nombre,
+                persona: c.nombre,
+                valor: c.valor,
+                firmaUrl: c.firmaUrl,
+              };
+            }
+            return null;
+          })
+        );
+        const generados = resultados.filter((item): item is ArchivoPDFItem => item !== null);
 
         if (generados.length > 0) {
           const msgPdf: Mensaje = {
