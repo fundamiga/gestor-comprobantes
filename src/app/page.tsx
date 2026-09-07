@@ -204,6 +204,7 @@ export default function Home() {
 
   const [periodoAbierto, setPeriodoAbierto] = useState<string | null>(null);
   const [loteNavegandoId, setLoteNavegandoId] = useState<string | null>(null);
+  const [tipoNavegandoId, setTipoNavegandoId] = useState<string | null>(null);
   const [modalPeriodo, setModalPeriodo] = useState(false);
   const [modoVista, setModoVista] = useState<"grid" | "list">("grid");
 
@@ -219,24 +220,35 @@ export default function Home() {
     setModalPeriodo(false);
   };
 
-  // Navegación desde el chat: abre el periodo correcto y navega al lote
-  const handleNavegarDesdeChat = useCallback((loteId: string, tipoId?: string) => {
-    const periodoConLote = periodos.find((p) => p.lotes.some((l) => l.id === loteId));
-    if (periodoConLote) {
-      setPeriodoAbierto(periodoConLote.id);
-      setLoteNavegandoId(loteId);
-      // Scroll al lote después de render
-      setTimeout(() => {
-        const el = document.getElementById(`lote-${loteId}`);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-        if (tipoId) {
-          const elTipo = document.getElementById(`tipo-${loteId}-${tipoId}`);
-          if (elTipo) elTipo.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-        setLoteNavegandoId(null);
-      }, 600);
+  // Navegación desde el chat: abre periodo, lote y/o tipo de documento
+  const handleNavegarDesdeChat = useCallback((loteId?: string | null, tipoId?: string | null, periodoId?: string | null) => {
+    let targetPeriodoId = periodoId;
+    if (!targetPeriodoId && loteId) {
+      const periodoConLote = periodos.find((p) => p.lotes.some((l) => l.id === loteId));
+      if (periodoConLote) targetPeriodoId = periodoConLote.id;
     }
-  }, [periodos]);
+    if (!targetPeriodoId && periodoAbierto) {
+      targetPeriodoId = periodoAbierto;
+    }
+    if (!targetPeriodoId && periodos.length > 0) {
+      targetPeriodoId = periodos[0].id;
+    }
+
+    let targetLoteId = loteId;
+    if (targetPeriodoId && tipoId && !targetLoteId) {
+      const p = periodos.find((x) => x.id === targetPeriodoId);
+      const loteConTipo = p?.lotes.find((l) => (l.documentos[tipoId] ?? []).length > 0) || p?.lotes[0];
+      if (loteConTipo) {
+        targetLoteId = loteConTipo.id;
+      }
+    }
+
+    if (targetPeriodoId) {
+      setPeriodoAbierto(targetPeriodoId);
+      setLoteNavegandoId(targetLoteId || null);
+      setTipoNavegandoId(tipoId || null);
+    }
+  }, [periodos, periodoAbierto]);
 
   // Calcular alertas del periodo activo para el contexto del chat
   const alertasParaChat = periodoAbierto
@@ -278,6 +290,8 @@ export default function Home() {
             >
               <VistaMes
                 periodo={periodo}
+                loteInicialId={loteNavegandoId}
+                tipoInicialId={tipoNavegandoId}
                 onCrearLote={(datos) => crearLote(periodo.id, datos)}
                 onEliminarLote={(loteId) => eliminarLote(periodo.id, loteId)}
                 onActualizarLote={(loteId, datos) => actualizarLote(periodo.id, loteId, datos)}

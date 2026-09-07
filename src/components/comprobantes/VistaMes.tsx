@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Calendar,
@@ -31,6 +31,8 @@ import { TIPOS_DOCUMENTO } from "@/lib/constantes";
 
 interface VistaMesProps {
   periodo: Periodo;
+  loteInicialId?: string | null;
+  tipoInicialId?: string | null;
   onCrearLote: (datos: Pick<Lote, "proveedor" | "referencia" | "tipoPago">) => void;
   onEliminarLote: (loteId: string) => void;
   onActualizarLote: (loteId: string, datos: Partial<Lote>) => void;
@@ -42,6 +44,8 @@ interface VistaMesProps {
 
 export function VistaMes({
   periodo,
+  loteInicialId,
+  tipoInicialId,
   onCrearLote,
   onEliminarLote,
   onActualizarLote,
@@ -51,8 +55,14 @@ export function VistaMes({
   onVolver,
 }: VistaMesProps) {
   const [modalAbierto, setModalAbierto] = useState(false);
-  const [loteAbierto, setLoteAbierto] = useState<string | null>(null);
+  const [loteAbierto, setLoteAbierto] = useState<string | null>(loteInicialId ?? null);
   const [modoVista, setModoVista] = useState<"grid" | "list">("grid");
+
+  useEffect(() => {
+    if (loteInicialId) {
+      setLoteAbierto(loteInicialId);
+    }
+  }, [loteInicialId]);
 
   const mesLabel = `${MESES[periodo.mes]} ${periodo.anio}`;
   const requeridos = TIPOS_DOCUMENTO.filter((t) => t.requerido);
@@ -70,6 +80,7 @@ export function VistaMes({
           <VistaLote
             lote={lote}
             periodo={periodo}
+            tipoInicialId={tipoInicialId}
             onAgregarArchivo={(tipoId, arch) =>
               onAgregarArchivo(loteAbierto, tipoId, arch)
             }

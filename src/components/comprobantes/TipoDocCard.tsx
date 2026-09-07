@@ -347,6 +347,7 @@ export function TipoDocCard({
 
   return (
     <div
+      id={`tipo-${tipo.id}`}
       className="drive-folder-card"
       style={{
         border: `1.5px solid ${tiene ? tipo.color + "45" : "#dadce0"}`,

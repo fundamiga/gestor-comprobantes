@@ -18,8 +18,8 @@ export interface ContextoAsistente {
   periodos: Periodo[];
   periodoActivoId: string | null;
   alertasConsecutivos: AlertaConsecutivoIA[];
-  /** Navega al lote + tipo indicados */
-  navegarA: (loteId: string, tipoId?: string) => void;
+  /** Navega al período, lote y/o tipo de documento indicados */
+  navegarA: (loteId?: string | null, tipoId?: string | null, periodoId?: string | null) => void;
 }
 
 const defaultCtx: ContextoAsistente = {
@@ -42,7 +42,7 @@ interface Props {
   periodos: Periodo[];
   periodoActivoId: string | null;
   alertasConsecutivos: AlertaConsecutivoIA[];
-  onNavegar: (loteId: string, tipoId?: string) => void;
+  onNavegar: (loteId?: string | null, tipoId?: string | null, periodoId?: string | null) => void;
 }
 
 export function AsistenteProvider({

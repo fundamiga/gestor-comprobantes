@@ -9,45 +9,39 @@ const GEMINI_MODELS = [
 ];
 
 function crearSystemPrompt(fechaHoyStr: string, fechaAyerStr: string, anioActual: number) {
-  return `Eres "Amiga IA", la asistente inteligente del Gestor de Comprobantes de Fundamiga (Fundación Una Mano Amiga a Tiempo).
+  return `Eres "Amiga IA", la asistente inteligente, bibliotecaria y auditora contable experta del Gestor de Comprobantes de Fundamiga (Fundación Una Mano Amiga a Tiempo).
 FECHA ACTUAL DE HOY: ${fechaHoyStr}.
 
-SOBRE EL SISTEMA:
-- Gestionas comprobantes contables por períodos mensuales organizados en "lotes" (uno por proveedor).
-- Tipos de documentos que maneja el sistema:
-  * CC-9 (Causación): Registra el gasto. Requerido.
-  * DS (Documento Soporte): Para compras a proveedores informales sin factura. Requerido.
-  * CC-6 (Egreso): Soporte del pago efectuado. Requerido.
-  * CC-10 (Aprobación): Autorización de pago firmada. Requerido.
-  * FV (Factura de Venta): Opcional, reemplaza al DS si aplica.
-  * Conciliaciones bancarias, extractos, informes de tesorera.
-- Los proveedores están registrados con nombre y cédula en la base de datos.
-- Las firmas de los proveedores se guardan en Cloudinary y se adjuntan automáticamente.
+TU PAPEL COMO BIBLIOTECARIA Y AUDITORA CONTABLE:
+- Conoces con exactitud milimétrica la ubicación de cada período (mes/año), lote (proveedor), carpeta de documento (CC-9, DS, CC-6, CC-10, FV, Bancos, etc.) y cada archivo subido.
+- Eres guardiana del ORDEN y de la INTEGRIDAD de los comprobantes:
+  1. AUDITORÍA DE CONSECUTIVOS: Verificas la secuencia numérica. Si hay saltos (gaps/faltantes) o repetidos, los reportas con precisión (ej: "En DS faltan los consecutivos del 4418 al 4432").
+  2. AUDITORÍA DE PAREJAS: En los documentos que exigen parejas (CC-9, DS, CC-6, CC-10), sabes cuáles parejas tienen sus 2 archivos completos y cuáles están incompletas (1 archivo de 2).
+  3. AUDITORÍA DE LOTES: Sabes qué lotes están incompletos y qué documentos obligatorios les faltan (CC-9 Causación, DS Soporte, CC-6 Egreso, CC-10 Aprobación).
 
-PUEDES HACER:
-1. Responder preguntas sobre el sistema, documentos, procesos contables.
-2. Generar cuentas de cobro en PDF cuando el usuario lo pida.
+ASISTENCIA ACTIVA Y GENERACIÓN PROACTIVA (COMPLETAR PAREJAS):
+- Si el usuario te pregunta qué falta, o si al auditar detectas una pareja incompleta (ej: Pareja 1 de Melissa Garzón tiene el soporte DIAN pero le falta la cuenta de cobro):
+  Ofrécele proactivamente completarla:
+  *"En el lote de Melissa Garzón falta el soporte de la Pareja X (#4380). ¿Deseas que generemos la cuenta de cobro en PDF con su firma para completarla ahora mismo? Solo confírmame el valor y concepto."*
+- Si el usuario autoriza o te da los datos (o te dice "sí, hazla"), emite inmediatamente el JSON de generación de cuentas.
+
+NAVEGACIÓN INTELIGENTE E INSTANTÁNEA:
+- Si el usuario te pide ir a cualquier parte, ver archivos o abrir carpetas (ejemplos: "llévame al lote de Melissa", "muéstrame los archivos DS de enero", "llévame a enero 2026", "dónde está el error de CC-10? llévame"):
+  Debes responder con el JSON de navegación EXACTO (sin markdown adicional):
+  {"accion":"navegar","periodoId":"ID_PERIODO_OPCIONAL","loteId":"ID_LOTE_OPCIONAL","tipoId":"ID_TIPO_OPCIONAL","mensaje":"¡Con gusto! Te llevo a [ubicación]..."}
 
 PARA GENERAR CUENTAS DE COBRO:
-- Si el usuario pide cuentas de cobro para una o VARIAS personas (por ejemplo: "genera para Melissa, Noe y Kevin"), debes procesarlas TODAS juntas en una sola respuesta.
+- Si el usuario pide cuentas de cobro para una o VARIAS personas (por ejemplo: "genera para Melissa, Noe y Kevin"), procesa TODAS en una sola respuesta.
 - Si da un solo valor general (por ejemplo: "de 50.000"), aplícalo a cada persona.
-- Concepto: si el usuario no especifica concepto o dice "déjalo como está", "lo de siempre", usa por defecto "Honorarios y servicios".
-- Fecha: debes detectar la fecha que pide el usuario y ponerla en formato "YYYY-MM-DD":
-  * Si dice "hoy", "fecha de hoy", "de hoy", "actual" o si NO menciona fecha: usa "${fechaHoyStr}".
-  * Si dice "ayer": usa "${fechaAyerStr}".
-  * Si menciona un día/mes específico (ej: "15 de agosto", "30 de julio de 2024", "10 de mayo"): conviértelo a formato "YYYY-MM-DD" (asume el año ${anioActual} si no dice año).
-- Si falta el valor en pesos, pregúntale amablemente por el valor.
-- Cuando tengas los datos, responde EXACTAMENTE en este formato JSON (sin markdown, sin texto adicional):
-{"accion":"generar_cuentas","cuentas":[{"nombre":"NOMBRE 1","valor":50000,"concepto":"Honorarios y servicios","fecha":"${fechaHoyStr}"}]}
+- Concepto por defecto si no se especifica: "Honorarios y servicios".
+- Fecha por defecto: hoy (${fechaHoyStr}). Si menciona otra fecha, conviértela a YYYY-MM-DD.
+- Cuando tengas los datos, responde EXACTAMENTE en este JSON:
+  {"accion":"generar_cuentas","cuentas":[{"nombre":"NOMBRE","valor":50000,"concepto":"Honorarios y servicios","fecha":"${fechaHoyStr}"}]}
 
-(Nota: si es una sola persona, ponla también dentro de la lista "cuentas" con 1 elemento).
-
-REGLAS:
-- Responde siempre en español colombiano, claro y profesional.
-- Sé amable y conciso.
-- Si no sabes algo del sistema, dilo honestamente.
-- El NIT de Fundamiga es 901.369.891-9.
-- La dirección es Yumbo, Valle del Cauca, Colombia.`;
+REGLAS DE COMUNICACIÓN:
+- Responde siempre en español colombiano, amable, claro, estructurado y profesional.
+- Usa viñetas y formato claro cuando hagas reportes de auditoría.
+- El NIT de Fundamiga es 901.369.891-9, sede Yumbo, Valle del Cauca.`;
 }
 
 // ─── CACHÉ Y BÚSQUEDA RÁPIDA DE FIRMAS DE CLOUDINARY ───────────────────────
@@ -165,31 +159,57 @@ export async function POST(req: NextRequest) {
     // Construir bloque de datos reales del sistema si vienen del cliente
     let contextoStr = "";
     if (contexto) {
-      const { periodoActivoNombre, periodos: pList, alertasConsecutivos: alertas } = contexto;
+      const { periodoActivoNombre, periodos: pList } = contexto;
+      contextoStr += `\n\n═════════════════════════════════════════════════════════════\n`;
+      contextoStr += `BASE DE DATOS Y ESTADO DEL ARCHIVO EN TIEMPO REAL:\n`;
       if (periodoActivoNombre) {
-        contextoStr += `\n\nDATOS REALES DEL SISTEMA (período activo: ${periodoActivoNombre}):\n`;
-      } else {
-        contextoStr += `\n\nDATOS REALES DEL SISTEMA:\n`;
+        contextoStr += `(El usuario está viendo actualmente el período: ${periodoActivoNombre})\n`;
       }
+
       if (pList && pList.length > 0) {
         for (const p of pList) {
-          contextoStr += `\nPERÍODO: ${p.nombre}${p.activo ? " (ACTIVO)" : ""} - ${p.totalLotes} lotes\n`;
+          contextoStr += `\n📁 PERÍODO: ${p.nombre} [id: ${p.id}] ${p.activo ? "★ ACTIVO" : ""}\n`;
+          contextoStr += `   Total Lotes: ${p.totalLotes}\n`;
+
+          if (p.alertasConsecutivos && p.alertasConsecutivos.length > 0) {
+            contextoStr += `   📊 Auditoría de Consecutivos de este período:\n`;
+            for (const a of p.alertasConsecutivos) {
+              if ((a.faltantes && a.faltantes.length > 0) || (a.repetidos && a.repetidos.length > 0)) {
+                contextoStr += `     - ${a.tipoLabel} (${a.tipoId}): ${a.rango ? `rango ${a.rango}` : ""} | FALTAN ${a.faltantes.length} números (${a.faltantes.slice(0, 10).join(", ")}${a.faltantes.length > 10 ? "..." : ""}) | Repetidos: ${a.repetidos.join(", ") || "0"}\n`;
+              } else if (a.rango) {
+                contextoStr += `     - ${a.tipoLabel} (${a.tipoId}): secuencia correcta ${a.rango} (sin saltos)\n`;
+              }
+            }
+          }
+
+          contextoStr += `   📋 Lotes en este período:\n`;
           for (const l of (p.lotes || [])) {
-            contextoStr += `  - Lote "${l.nombre}" [id:${l.id}] | estado:${l.estado} | ${l.totalArchivos} archivos | tipos: ${(l.tipos || []).join(", ") || "ninguno"}\n`;
+            contextoStr += `     * Lote "${l.proveedor}" [id: ${l.id}] | Estado: ${l.estado}\n`;
+            if (l.requeridosFaltantes && l.requeridosFaltantes.length > 0) {
+              contextoStr += `       ⚠️ Faltan documentos requeridos: ${l.requeridosFaltantes.join(", ")}\n`;
+            }
+            if (l.documentos) {
+              for (const [tipoId, d] of Object.entries(l.documentos) as any) {
+                if (d.incompletas && d.incompletas.length > 0) {
+                  contextoStr += `       ⚠️ ${tipoId}: Tiene ${d.incompletas.length} pareja(s) INCOMPLETA(S):\n`;
+                  for (const inc of d.incompletas) {
+                    contextoStr += `          - ${inc.pareja} (${inc.num ? '#' + inc.num : 'sin número'}): solo tiene "${inc.archivoPresente}", falta ${inc.falta}\n`;
+                  }
+                } else if (d.totalParejas) {
+                  contextoStr += `       ✅ ${tipoId}: ${d.completasCount} pareja(s) completas (${d.totalArchivos} archivos)\n`;
+                } else if (d.totalArchivos) {
+                  contextoStr += `       📄 ${tipoId}: ${d.totalArchivos} archivo(s)\n`;
+                }
+              }
+            }
           }
         }
       }
-      if (alertas && alertas.length > 0) {
-        contextoStr += `\nALERTAS DE CONSECUTIVOS:\n`;
-        for (const a of alertas) {
-          if (a.faltantes.length > 0 || a.repetidos.length > 0) {
-            contextoStr += `  - ${a.tipoLabel} (${a.tipoNombre}): rango ${Math.min(...a.presentes)}-${Math.max(...a.presentes)}, faltan ${a.faltantes.length} docs${a.faltantes.length > 0 ? ` (${a.faltantes.slice(0,5).join(",")}${a.faltantes.length > 5 ? "..." : ""})` : ""}, repetidos: ${a.repetidos.length}\n`;
-          } else {
-            contextoStr += `  - ${a.tipoLabel} (${a.tipoNombre}): secuencia correcta del ${Math.min(...a.presentes)} al ${Math.max(...a.presentes)}\n`;
-          }
-        }
-      }
-      contextoStr += `\nCUANDO EL USUARIO PIDA IR A UN LOTE ESPECÍFICO, responde EXACTAMENTE en este JSON (sin texto adicional):\n{"accion":"navegar","loteId":"ID_DEL_LOTE","tipoId":"ID_TIPO_OPCIONAL","mensaje":"Te llevo a: NOMBRE_LOTE"}\n`;
+      contextoStr += `═════════════════════════════════════════════════════════════\n`;
+      contextoStr += `INSTRUCCIONES CLAVE DE NAVEGACIÓN:\n`;
+      contextoStr += `- Cuando el usuario pida ir a una carpeta, período o lote ("llévame a...", "muéstrame...", "ir a...", "abre..."), responde EXACTAMENTE en este JSON:\n`;
+      contextoStr += `{"accion":"navegar","periodoId":"ID_PERIODO","loteId":"ID_LOTE","tipoId":"ID_TIPO","mensaje":"¡Con gusto! Te llevo a [descripción]..."}\n`;
+      contextoStr += `- Si el usuario solo pide un período, envía periodoId. Si pide un lote, incluye loteId. Si pide ver un tipo de documento (ej: DS, CC-9, CC-10), incluye tipoId.\n`;
     }
 
     // Construir historial de mensajes para Gemini
@@ -272,10 +292,11 @@ export async function POST(req: NextRequest) {
       } catch (_) {}
     }
 
-    if (accion && accion.accion === "navegar" && accion.loteId) {
+    if (accion && accion.accion === "navegar" && (accion.loteId || accion.periodoId || accion.tipoId)) {
       return NextResponse.json({
         tipo: "navegar",
-        loteId: accion.loteId,
+        periodoId: accion.periodoId || null,
+        loteId: accion.loteId || null,
         tipoId: accion.tipoId || null,
         mensaje: accion.mensaje || "Te llevo ahí.",
       });

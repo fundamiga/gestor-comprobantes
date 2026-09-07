@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Building2, AlertCircle, CheckCircle, CheckCircle2, Info, FileDown, Edit2, Check, X, Folder, FolderOpen, LayoutGrid, List, HardDrive, ChevronRight } from "lucide-react";
 import type { Lote, Periodo, ArchivoSubido } from "@/types";
 import { TIPOS_DOCUMENTO, MESES } from "@/lib/constantes";
@@ -14,6 +14,7 @@ import { toast } from "sonner";
 interface VistaLoteProps {
   lote: Lote;
   periodo: Periodo;
+  tipoInicialId?: string | null;
   onAgregarArchivo: (tipoId: string, archivo: ArchivoSubido) => void;
   onEliminarArchivo: (tipoId: string, archivoId: string) => void;
   onActualizarArchivosDoc: (tipoId: string, nuevosArchivos: ArchivoSubido[]) => void;
@@ -24,6 +25,7 @@ interface VistaLoteProps {
 export function VistaLote({
   lote,
   periodo,
+  tipoInicialId,
   onAgregarArchivo,
   onEliminarArchivo,
   onActualizarArchivosDoc,
@@ -35,7 +37,17 @@ export function VistaLote({
   const [provEdit, setProvEdit] = useState(lote.proveedor);
   const [refEdit, setRefEdit] = useState(lote.referencia || "");
   const [vistaModo, setVistaModo] = useState<"list" | "grid">("grid");
-  const [carpetaAbierta, setCarpetaAbierta] = useState<string | null>(null);
+  const [carpetaAbierta, setCarpetaAbierta] = useState<string | null>(tipoInicialId ?? null);
+
+  useEffect(() => {
+    if (tipoInicialId) {
+      setCarpetaAbierta(tipoInicialId);
+      setTimeout(() => {
+        const el = document.getElementById(`tipo-${tipoInicialId}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+    }
+  }, [tipoInicialId]);
 
   const handleGuardarEdicion = () => {
     if (!provEdit.trim()) return;
