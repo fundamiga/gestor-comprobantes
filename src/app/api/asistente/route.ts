@@ -113,10 +113,25 @@ export async function POST(req: NextRequest) {
     }
 
     // Detectar si la respuesta es un JSON de acción
-    const jsonMatch = respuestaTexto.match(/\{[\s\S]*?"accion"\s*:\s*"generar_cuenta[s]?"[\s\S]*?\}/) || respuestaTexto.match(/\{[\s\S]*?\}/);
-    if (jsonMatch) {
+    let accion: any = null;
+
+    try {
+      const limpia = respuestaTexto.replace(/```json\s*/i, "").replace(/```\s*$/i, "").trim();
+      accion = JSON.parse(limpia);
+    } catch (_) {}
+
+    if (!accion) {
       try {
-        const accion = JSON.parse(jsonMatch[0]);
+        const inicio = respuestaTexto.indexOf("{");
+        const fin = respuestaTexto.lastIndexOf("}");
+        if (inicio !== -1 && fin > inicio) {
+          accion = JSON.parse(respuestaTexto.slice(inicio, fin + 1));
+        }
+      } catch (_) {}
+    }
+
+    if (accion && (accion.accion === "generar_cuentas" || accion.accion === "generar_cuenta")) {
+      try {
         const listaItems: { nombre: string; valor: number; concepto?: string }[] = [];
 
         if (accion.accion === "generar_cuentas" && Array.isArray(accion.cuentas)) {
@@ -134,30 +149,57 @@ export async function POST(req: NextRequest) {
             let nombreFinal = item.nombre;
             let cedula = "Por definir";
 
-            // 1. Buscar en Supabase (coincidencia flexible sin importar el orden de las palabras)
+            // 1. Buscar en Supabase (coincidencia flexible sin importar orden y con tolerancia a erratas)
             try {
               const palabras = item.nombre.trim().split(/\s+/).filter((p: string) => p.length >= 2);
-              let query = "";
+              let sbData: any[] = [];
+
               if (palabras.length > 1) {
                 const conditions = palabras.map((p: string) => `nombre.ilike.%25${encodeURIComponent(p)}%25`).join(",");
-                query = `and=(${conditions})`;
-              } else if (palabras.length === 1) {
-                query = `nombre=ilike.%25${encodeURIComponent(palabras[0])}%25`;
-              }
-
-              if (query) {
-                const sbUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/proveedores?${query}&select=nombre,cedula&limit=1`;
+                const sbUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/proveedores?and=(${conditions})&select=nombre,cedula&limit=1`;
                 const sbRes = await fetch(sbUrl, {
                   headers: {
                     apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
                     Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""}`,
                   },
                 });
-                const sbData = await sbRes.json();
-                if (sbData?.[0]) {
-                  if (sbData[0].nombre) nombreFinal = sbData[0].nombre;
-                  if (sbData[0].cedula) cedula = sbData[0].cedula;
+                sbData = await sbRes.json();
+
+                // Si no encontró por errata (ej: "Kevon" en vez de "Kevin"), buscar por apellido
+                if (!sbData || sbData.length === 0) {
+                  for (const p of palabras) {
+                    if (p.length > 3) {
+                      const fallbackRes = await fetch(
+                        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/proveedores?nombre=ilike.%25${encodeURIComponent(p)}%25&select=nombre,cedula&limit=1`,
+                        {
+                          headers: {
+                            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+                            Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""}`,
+                          },
+                        }
+                      );
+                      const fData = await fallbackRes.json();
+                      if (fData && fData.length > 0) {
+                        sbData = fData;
+                        break;
+                      }
+                    }
+                  }
                 }
+              } else if (palabras.length === 1) {
+                const sbUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/proveedores?nombre=ilike.%25${encodeURIComponent(palabras[0])}%25&select=nombre,cedula&limit=1`;
+                const sbRes = await fetch(sbUrl, {
+                  headers: {
+                    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+                    Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""}`,
+                  },
+                });
+                sbData = await sbRes.json();
+              }
+
+              if (sbData?.[0]) {
+                if (sbData[0].nombre) nombreFinal = sbData[0].nombre;
+                if (sbData[0].cedula) cedula = sbData[0].cedula;
               }
             } catch (e) {
               console.warn("No se pudo consultar Supabase para", item.nombre, e);
