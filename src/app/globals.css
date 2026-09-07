@@ -113,3 +113,66 @@ body {
   font-family: "Segoe UI", system-ui, sans-serif;
 }
 
+/* ── Estilos de Carpeta tipo Google Drive ── */
+.drive-folder-card {
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  border-radius: 14px;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  user-select: none;
+  cursor: pointer;
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.05);
+}
+
+.drive-folder-card:hover {
+  background: #f0f4f9;
+  border-color: #bdc1c6;
+  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.2), 0 4px 8px 3px rgba(60, 64, 67, 0.1);
+  transform: translateY(-1px);
+}
+
+.drive-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  border-radius: 24px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f1f1f;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.15);
+  transition: all 0.2s ease;
+}
+
+.drive-pill-btn:hover {
+  background: #f8fafd;
+  box-shadow: 0 2px 6px rgba(60, 64, 67, 0.22);
+}
+
+.drive-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #444746;
+  font-weight: 600;
+}
+
+.drive-breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+
+.drive-breadcrumb-item:hover {
+  background: #f0f4f9;
+}
+
+

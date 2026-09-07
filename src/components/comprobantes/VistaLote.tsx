@@ -93,8 +93,8 @@ export function VistaLote({
           boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
         }}
       >
-        {/* Barra de dirección estilo Explorador de Windows */}
-        <div className="win-address-bar" style={{ marginBottom: 12 }}>
+        {/* Barra de dirección estilo Google Drive */}
+        <div className="drive-breadcrumb" style={{ marginBottom: 14 }}>
           <button
             onClick={() => {
               if (carpetaAbierta) {
@@ -103,46 +103,80 @@ export function VistaLote({
                 onVolver();
               }
             }}
+            className="drive-breadcrumb-item"
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
               background: "none",
               border: "none",
               cursor: "pointer",
-              color: "#2563eb",
-              fontSize: 12,
-              fontWeight: 800,
-              padding: 0,
+              color: "#1a73e8",
               fontFamily: "inherit",
+              padding: "4px 8px",
             }}
           >
-            <ArrowLeft size={13} /> Volver
+            <Folder size={16} style={{ color: "#1a73e8", fill: "#1a73e820" }} />
+            <span>Mi unidad</span>
           </button>
-          <span style={{ color: "#cbd5e1" }}>|</span>
-          <HardDrive size={13} style={{ color: "#64748b" }} />
-          <span style={{ color: "#64748b" }}>Este Equipo</span>
-          <ChevronRight size={12} style={{ color: "#94a3b8" }} />
-          <FolderOpen size={13} style={{ color: "#f59e0b" }} />
-          <span style={{ color: "#64748b" }}>{mesLabel}</span>
-          <ChevronRight size={12} style={{ color: "#94a3b8" }} />
-          <Folder size={13} style={{ color: "#10b981" }} />
+          <ChevronRight size={14} style={{ color: "#747775" }} />
+          <button
+            onClick={onVolver}
+            className="drive-breadcrumb-item"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#444746",
+              fontFamily: "inherit",
+              padding: "4px 8px",
+            }}
+          >
+            <Folder size={15} style={{ color: "#f59e0b" }} />
+            <span>{mesLabel}</span>
+          </button>
+          <ChevronRight size={14} style={{ color: "#747775" }} />
           {carpetaAbierta ? (
             <>
               <button
                 onClick={() => setCarpetaAbierta(null)}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 12, fontWeight: 700, padding: 0, fontFamily: "inherit" }}
+                className="drive-breadcrumb-item"
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#444746",
+                  fontFamily: "inherit",
+                  padding: "4px 8px",
+                }}
               >
-                {lote.proveedor}
+                <Folder size={15} style={{ color: "#10b981" }} />
+                <span>{lote.proveedor}</span>
               </button>
-              <ChevronRight size={12} style={{ color: "#94a3b8" }} />
-              <Folder size={13} style={{ color: TIPOS_DOCUMENTO.find(t => t.id === carpetaAbierta)?.color ?? "#64748b" }} />
-              <strong style={{ color: "#0f172a" }}>
-                {TIPOS_DOCUMENTO.find(t => t.id === carpetaAbierta)?.label ?? carpetaAbierta}
-              </strong>
+              <ChevronRight size={14} style={{ color: "#747775" }} />
+              <div
+                className="drive-breadcrumb-item"
+                style={{ cursor: "default", fontWeight: 800, color: "#1f1f1f" }}
+              >
+                <Folder
+                  size={15}
+                  style={{
+                    color:
+                      TIPOS_DOCUMENTO.find((t) => t.id === carpetaAbierta)?.color ??
+                      "#64748b",
+                  }}
+                />
+                <span>
+                  {TIPOS_DOCUMENTO.find((t) => t.id === carpetaAbierta)?.label ??
+                    carpetaAbierta}
+                </span>
+              </div>
             </>
           ) : (
-            <strong style={{ color: "#0f172a" }}>{lote.proveedor}</strong>
+            <div
+              className="drive-breadcrumb-item"
+              style={{ cursor: "default", fontWeight: 800, color: "#1f1f1f" }}
+            >
+              <Folder size={15} style={{ color: "#10b981" }} />
+              <span>{lote.proveedor}</span>
+            </div>
           )}
         </div>
 

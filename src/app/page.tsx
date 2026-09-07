@@ -5,11 +5,15 @@ import {
   ClipboardList,
   Plus,
   FolderOpen,
+  Folder,
   Calendar,
   ChevronRight,
   X,
   FileText,
   FileSignature,
+  LayoutGrid,
+  List,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useComprobantes } from "@/hooks/useComprobantes";
@@ -198,6 +202,7 @@ export default function Home() {
 
   const [periodoAbierto, setPeriodoAbierto] = useState<string | null>(null);
   const [modalPeriodo, setModalPeriodo] = useState(false);
+  const [modoVista, setModoVista] = useState<"grid" | "list">("grid");
 
   // Abrir o crear período
   const handleAbrirPeriodo = async (mes: number, anio: number) => {
@@ -271,9 +276,10 @@ export default function Home() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         style={{
-          maxWidth: 680,
+          maxWidth: modoVista === "grid" ? 920 : 680,
           margin: "0 auto",
           padding: "28px 16px 60px",
+          transition: "max-width 0.25s ease",
         }}
       >
         {/* Resumen global */}
@@ -391,167 +397,357 @@ export default function Home() {
             )}
           </div>
         ) : (
-          /* Lista de períodos */
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <p
+          /* Explorador de Períodos - Estilo Google Drive */
+          <div>
+            {/* Barra superior estilo Google Drive: Breadcrumb + Switcher + Botón Nuevo */}
+            <div
               style={{
-                fontWeight: 900,
-                fontSize: 11,
-                color: "#94a3b8",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                margin: "0 0 6px 2px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 16,
+                flexWrap: "wrap",
+                gap: 12,
               }}
             >
-              Períodos registrados
-            </p>
-            {periodos.map((periodo) => {
-              const completos = periodo.lotes.filter(
-                (l) => calcularEstadoLote(l) === "completo"
-              ).length;
-              const incompletos = periodo.lotes.filter(
-                (l) => calcularEstadoLote(l) === "incompleto"
-              ).length;
-              const sinDocs = periodo.lotes.filter(
-                (l) => calcularEstadoLote(l) === "vacio"
-              ).length;
-              const estadoGeneral: EstadoLote =
-                periodo.lotes.length === 0
-                  ? "vacio"
-                  : incompletos > 0 || sinDocs > 0
-                  ? "incompleto"
-                  : "completo";
+              <div className="drive-breadcrumb">
+                <div className="drive-breadcrumb-item">
+                  <Folder size={18} style={{ color: "#1a73e8", fill: "#1a73e820" }} />
+                  <span style={{ fontSize: 16, fontWeight: 800, color: "#1f1f1f" }}>
+                    Mi unidad
+                  </span>
+                </div>
+              </div>
 
-              return (
-                <motion.div
-                  key={periodo.id}
-                  whileHover={{ y: -3, boxShadow: "0 8px 30px rgba(0,0,0,0.06)", borderColor: `${colorEstado(estadoGeneral)}50` }}
-                  transition={{ duration: 0.2 }}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {/* Switcher Cuadrícula / Lista */}
+                <div
                   style={{
-                    background: "#fff",
-                    border: `1.5px solid ${colorEstado(estadoGeneral)}28`,
-                    borderRadius: 18,
-                    overflow: "hidden",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-                    cursor: "default",
+                    display: "flex",
+                    background: "#f1f3f4",
+                    borderRadius: 10,
+                    padding: 3,
+                    gap: 2,
                   }}
                 >
-                  <div
+                  <button
+                    onClick={() => setModoVista("grid")}
+                    title="Vista en cuadrícula"
                     style={{
-                      padding: "16px 20px",
+                      background: modoVista === "grid" ? "#ffffff" : "transparent",
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "5px 9px",
+                      cursor: "pointer",
+                      boxShadow: modoVista === "grid" ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
                       display: "flex",
                       alignItems: "center",
-                      gap: 14,
+                      transition: "all 0.15s ease",
                     }}
                   >
-                    <div
+                    <LayoutGrid size={15} style={{ color: modoVista === "grid" ? "#1a73e8" : "#5f6368" }} />
+                  </button>
+                  <button
+                    onClick={() => setModoVista("list")}
+                    title="Vista en lista"
+                    style={{
+                      background: modoVista === "list" ? "#ffffff" : "transparent",
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "5px 9px",
+                      cursor: "pointer",
+                      boxShadow: modoVista === "list" ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+                      display: "flex",
+                      alignItems: "center",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <List size={15} style={{ color: modoVista === "list" ? "#1a73e8" : "#5f6368" }} />
+                  </button>
+                </div>
+
+                {/* Botón "+ Nuevo Período" estilo Google Drive */}
+                <button
+                  onClick={() => setModalPeriodo(true)}
+                  className="drive-pill-btn"
+                >
+                  <Plus size={16} style={{ color: "#1a73e8" }} />
+                  <span>Nuevo Período</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Subtítulo de Carpetas */}
+            <p
+              style={{
+                fontWeight: 700,
+                fontSize: 12,
+                color: "#444746",
+                margin: "0 0 12px 2px",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Folder size={14} style={{ color: "#5f6368" }} /> Carpetas de Períodos
+            </p>
+
+            {/* VISTA CUADRÍCULA (GRID) ESTILO GOOGLE DRIVE */}
+            {modoVista === "grid" ? (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                {periodos.map((periodo) => {
+                  const completos = periodo.lotes.filter(
+                    (l) => calcularEstadoLote(l) === "completo"
+                  ).length;
+                  const incompletos = periodo.lotes.filter(
+                    (l) => calcularEstadoLote(l) === "incompleto"
+                  ).length;
+                  const sinDocs = periodo.lotes.filter(
+                    (l) => calcularEstadoLote(l) === "vacio"
+                  ).length;
+                  const estadoGeneral: EstadoLote =
+                    periodo.lotes.length === 0
+                      ? "vacio"
+                      : incompletos > 0 || sinDocs > 0
+                      ? "incompleto"
+                      : "completo";
+
+                  const folderColor =
+                    estadoGeneral === "completo"
+                      ? "#1e8e3e"
+                      : estadoGeneral === "incompleto"
+                      ? "#f9ab00"
+                      : "#5f6368";
+
+                  return (
+                    <motion.div
+                      key={periodo.id}
+                      className="drive-folder-card"
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={() => setPeriodoAbierto(periodo.id)}
                       style={{
-                        width: 50,
-                        height: 50,
-                        borderRadius: 14,
-                        background: `${colorEstado(estadoGeneral)}18`,
+                        padding: "14px 16px",
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
+                        justifyContent: "space-between",
+                        gap: 12,
                       }}
                     >
-                      <Calendar
-                        size={24}
-                        style={{ color: colorEstado(estadoGeneral) }}
-                      />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: 10,
-                          flexWrap: "wrap",
+                          gap: 12,
+                          minWidth: 0,
+                          flex: 1,
                         }}
                       >
-                        <span
+                        <Folder
+                          size={32}
                           style={{
-                            fontWeight: 900,
-                            fontSize: 16,
-                            color: "#0f172a",
+                            color: folderColor,
+                            fill: `${folderColor}24`,
+                            flexShrink: 0,
                           }}
-                        >
-                          {MESES[periodo.mes]} {periodo.anio}
-                        </span>
-                        <EstadoBadge estado={estadoGeneral} size="md" />
+                        />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontWeight: 700,
+                              fontSize: 14,
+                              color: "#1f1f1f",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {MESES[periodo.mes]} {periodo.anio}
+                          </p>
+                          <p
+                            style={{
+                              margin: "2px 0 0",
+                              fontSize: 11,
+                              color: "#5f6368",
+                            }}
+                          >
+                            {periodo.lotes.length} lote{periodo.lotes.length !== 1 ? "s" : ""}
+                            {completos > 0 ? ` · ${completos} compl.` : ""}
+                          </p>
+                        </div>
                       </div>
-                      <p
-                        style={{ margin: "4px 0 0", fontSize: 11, color: "#94a3b8" }}
-                      >
-                        {periodo.lotes.length} lote
-                        {periodo.lotes.length !== 1 ? "s" : ""}
-                        {completos > 0
-                          ? ` · ✅ ${completos} completo${completos !== 1 ? "s" : ""}`
-                          : ""}
-                        {incompletos > 0
-                          ? ` · ⚠️ ${incompletos} incompleto${incompletos !== 1 ? "s" : ""}`
-                          : ""}
-                        {sinDocs > 0 ? ` · ⬜ ${sinDocs} sin docs` : ""}
-                      </p>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 8,
-                        flexShrink: 0,
-                        alignItems: "center",
-                      }}
-                    >
-                      <button
-                        onClick={() => setPeriodoAbierto(periodo.id)}
+
+                      <div
                         style={{
                           display: "flex",
                           alignItems: "center",
                           gap: 6,
-                          background: "#f8fafc",
-                          border: "1.5px solid #e2e8f0",
-                          borderRadius: 12,
-                          padding: "8px 16px",
-                          cursor: "pointer",
-                          fontWeight: 700,
-                          fontSize: 12,
-                          color: "#475569",
-                          fontFamily: "inherit",
+                          flexShrink: 0,
                         }}
                       >
-                        Abrir <ChevronRight size={14} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `¿Eliminar el período ${MESES[periodo.mes]} ${periodo.anio}? Se perderán todos sus lotes y archivos.`
-                            )
-                          ) {
-                            eliminarPeriodo(periodo.id);
-                          }
-                        }}
-                        title="Eliminar período"
+                        <EstadoBadge estado={estadoGeneral} size="sm" />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              confirm(
+                                `¿Eliminar el período ${MESES[periodo.mes]} ${periodo.anio}? Se perderán todos sus lotes y archivos.`
+                              )
+                            ) {
+                              eliminarPeriodo(periodo.id);
+                            }
+                          }}
+                          title="Eliminar período"
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: "6px",
+                            color: "#94a3b8",
+                            borderRadius: 6,
+                            display: "flex",
+                            alignItems: "center",
+                            transition: "all 0.15s",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = "#ef4444";
+                            e.currentTarget.style.background = "#fee2e2";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = "#94a3b8";
+                            e.currentTarget.style.background = "transparent";
+                          }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* VISTA LISTA ESTILO DRIVE */
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {periodos.map((periodo) => {
+                  const completos = periodo.lotes.filter(
+                    (l) => calcularEstadoLote(l) === "completo"
+                  ).length;
+                  const incompletos = periodo.lotes.filter(
+                    (l) => calcularEstadoLote(l) === "incompleto"
+                  ).length;
+                  const sinDocs = periodo.lotes.filter(
+                    (l) => calcularEstadoLote(l) === "vacio"
+                  ).length;
+                  const estadoGeneral: EstadoLote =
+                    periodo.lotes.length === 0
+                      ? "vacio"
+                      : incompletos > 0 || sinDocs > 0
+                      ? "incompleto"
+                      : "completo";
+
+                  const folderColor =
+                    estadoGeneral === "completo"
+                      ? "#1e8e3e"
+                      : estadoGeneral === "incompleto"
+                      ? "#f9ab00"
+                      : "#5f6368";
+
+                  return (
+                    <div
+                      key={periodo.id}
+                      className="drive-folder-card"
+                      onClick={() => setPeriodoAbierto(periodo.id)}
+                      style={{
+                        padding: "12px 18px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
+                      }}
+                    >
+                      <Folder
+                        size={24}
                         style={{
-                          background: "#fff0f0",
-                          border: "1px solid #fecaca",
-                          borderRadius: 10,
-                          padding: "8px 10px",
-                          cursor: "pointer",
-                          color: "#ef4444",
-                          fontSize: 11,
-                          fontWeight: 700,
-                          fontFamily: "inherit",
+                          color: folderColor,
+                          fill: `${folderColor}25`,
+                          flexShrink: 0,
                         }}
-                      >
-                        ✕
-                      </button>
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontWeight: 700, fontSize: 14, color: "#1f1f1f" }}>
+                            {MESES[periodo.mes]} {periodo.anio}
+                          </span>
+                          <EstadoBadge estado={estadoGeneral} size="sm" />
+                        </div>
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "#5f6368" }}>
+                          {periodo.lotes.length} lote{periodo.lotes.length !== 1 ? "s" : ""}
+                          {completos > 0 ? ` · ${completos} completos` : ""}
+                          {incompletos > 0 ? ` · ${incompletos} incompletos` : ""}
+                          {sinDocs > 0 ? ` · ${sinDocs} vacíos` : ""}
+                        </p>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPeriodoAbierto(periodo.id);
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            background: "#f1f3f4",
+                            border: "none",
+                            borderRadius: 10,
+                            padding: "6px 14px",
+                            cursor: "pointer",
+                            fontWeight: 700,
+                            fontSize: 12,
+                            color: "#1f1f1f",
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          Abrir <ChevronRight size={13} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              confirm(
+                                `¿Eliminar el período ${MESES[periodo.mes]} ${periodo.anio}? Se perderán todos sus lotes y archivos.`
+                              )
+                            ) {
+                              eliminarPeriodo(periodo.id);
+                            }
+                          }}
+                          title="Eliminar período"
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: "6px",
+                            color: "#94a3b8",
+                            borderRadius: 6,
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

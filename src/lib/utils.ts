@@ -74,6 +74,90 @@ export interface AlertaConsecutivos {
   presentes: number[];
 }
 
+/**
+ * Extrae limpiamente el número de consecutivo de un archivo o nombre de grupo,
+ * eliminando prefijos de tipo (CC-10, CC_10, CC10, DS, etc.), fechas y años.
+ */
+export function extraerNumeroConsecutivo(rawTexto: string, tipoId: string): number | null {
+  if (!rawTexto) return null;
+  let t = rawTexto;
+  // Eliminar extensión
+  t = t.replace(/\.[a-zA-Z0-9]+$/i, "");
+  // Eliminar fechas completas: 2026-01-15, 15-01-2026, 2026_01_15, etc.
+  t = t.replace(/\b\d{4}[-_/.]\d{1,2}[-_/.]\d{1,2}\b/g, "");
+  t = t.replace(/\b\d{1,2}[-_/.]\d{1,2}[-_/.]\d{4}\b/g, "");
+  // Eliminar años estándar de 4 dígitos (1990 - 2039)
+  t = t.replace(/\b(19\d\d|20[2-3]\d)\b/g, "");
+
+  // Eliminar prefijos comunes de comprobantes contables con guiones/guion bajo/espacios
+  t = t.replace(/CC[-_\s]*(?:10|9|6|1)(?=[^0-9]|$)/gi, "");
+  t = t.replace(/DS[-_\s]*/gi, "");
+  t = t.replace(/FV[-_\s]*/gi, "");
+  t = t.replace(/CE[-_\s]*/gi, "");
+  // Eliminar variantes directas de tipoId
+  t = t.replace(new RegExp(tipoId.replace(/(\d+)/, '[-_\\s]*$1'), 'gi'), "");
+  t = t.replace(new RegExp(tipoId, 'gi'), "");
+  // Ignorar 'Pareja X' para evitar tomar el número de la pareja como el número de consecutivo
+  t = t.replace(/Pareja\s*\d*/gi, "");
+
+  const match = t.match(/\d+/);
+  return match ? parseInt(match[0], 10) : null;
+}
+
+/**
+ * Agrupa una lista de números en rangos legibles:
+ * Ej: [4376, 4418, 4419, ..., 4432, 4443] -> ["4376", "4418 al 4432 (15 docs)", "4443"]
+ */
+export function agruparEnRangos(nums: number[]): string[] {
+  if (!nums || nums.length === 0) return [];
+  const ordenados = [...nums].sort((a, b) => a - b);
+  const rangos: string[] = [];
+  let inicio = ordenados[0];
+  let previo = ordenados[0];
+
+  for (let i = 1; i < ordenados.length; i++) {
+    const actual = ordenados[i];
+    if (actual === previo + 1) {
+      previo = actual;
+    } else {
+      rangos.push(inicio === previo ? `${inicio}` : `${inicio} al ${previo} (${previo - inicio + 1} docs)`);
+      inicio = actual;
+      previo = actual;
+    }
+  }
+  rangos.push(inicio === previo ? `${inicio}` : `${inicio} al ${previo} (${previo - inicio + 1} docs)`);
+  return rangos;
+}
+
+/**
+ * Filtra números atípicos aislados (outliers) que no corresponden al rango secuencial del mes.
+ */
+function filtrarValoresAtipicos(arr: number[]): number[] {
+  if (arr.length < 3) return arr;
+  const sorted = [...arr].sort((a, b) => a - b);
+  let cleaned = [...sorted];
+
+  // Descartar valores mínimos atípicos aislados (ej. 10 cuando los demás son 850..878)
+  while (
+    cleaned.length >= 3 &&
+    cleaned[1] - cleaned[0] > 100 &&
+    cleaned[cleaned.length - 1] - cleaned[1] < cleaned[1] - cleaned[0]
+  ) {
+    cleaned.shift();
+  }
+
+  // Descartar valores máximos atípicos aislados (ej. 2026 cuando los demás son 850..878)
+  while (
+    cleaned.length >= 3 &&
+    cleaned[cleaned.length - 1] - cleaned[cleaned.length - 2] > 100 &&
+    cleaned[cleaned.length - 2] - cleaned[0] < cleaned[cleaned.length - 1] - cleaned[cleaned.length - 2]
+  ) {
+    cleaned.pop();
+  }
+
+  return cleaned;
+}
+
 /** 
  * Analiza los números consecutivos de los archivos subidos por cada tipo de documento.
  * Extrae el número del nombre de la pareja o del nombre del archivo.
@@ -110,26 +194,23 @@ export function analizarConsecutivos(periodo: Periodo): Record<string, AlertaCon
           ];
 
           for (const rawTexto of posiblesTextos) {
-            // Ignorar el prefijo del tipo de documento (ej: "CC9") para no extraer el "9"
-            const texto = rawTexto.replace(new RegExp(tipo.id, 'gi'), '');
-
-            // Si es Pareja X, lo guardamos como fallback para no pisar números reales de las facturas
-            if (texto.startsWith("Pareja ")) {
-              const m = texto.match(/\d+/);
-              if (m && numFallback === null) numFallback = parseInt(m[0], 10);
-              continue;
+            const extraido = extraerNumeroConsecutivo(rawTexto, tipo.id);
+            if (extraido !== null) {
+              num = extraido;
+              break;
             }
-            const match = texto.match(/\d+/);
-            if (match) {
-              num = parseInt(match[0], 10);
-              break; // Encontramos un número válido en este grupo
+            // Si tiene Pareja X, guardamos X como fallback
+            if (rawTexto.includes("Pareja")) {
+              const m = rawTexto.match(/Pareja\s*(\d+)/i);
+              if (m && numFallback === null) {
+                numFallback = parseInt(m[1], 10);
+              }
             }
           }
 
           if (num === null && numFallback !== null) {
             num = numFallback;
           }
-
 
           if (num !== null) {
             numerosEncontrados.push(num);
@@ -138,10 +219,9 @@ export function analizarConsecutivos(periodo: Periodo): Record<string, AlertaCon
       } else {
         // Documentos individuales: extraemos número del nombre de cada archivo
         archivos.forEach((a) => {
-          const texto = a.nombre.replace(new RegExp(tipo.id, 'gi'), '');
-          const match = texto.match(/\d+/);
-          if (match) {
-            numerosEncontrados.push(parseInt(match[0], 10));
+          const extraido = extraerNumeroConsecutivo(a.nombre, tipo.id);
+          if (extraido !== null) {
+            numerosEncontrados.push(extraido);
           }
         });
       }
@@ -160,22 +240,24 @@ export function analizarConsecutivos(periodo: Periodo): Record<string, AlertaCon
       });
 
       if (unicosSet.size > 0) {
-        const arrUnicos = Array.from(unicosSet);
-        const min = Math.min(...arrUnicos);
-        const max = Math.max(...arrUnicos);
+        const arrFiltrado = filtrarValoresAtipicos(Array.from(unicosSet));
+        if (arrFiltrado.length > 0) {
+          const min = Math.min(...arrFiltrado);
+          const max = Math.max(...arrFiltrado);
 
-        const faltantes: number[] = [];
-        for (let i = min; i <= max; i++) {
-          if (!unicosSet.has(i)) {
-            faltantes.push(i);
+          const faltantes: number[] = [];
+          for (let i = min; i <= max; i++) {
+            if (!unicosSet.has(i)) {
+              faltantes.push(i);
+            }
           }
-        }
 
-        resultados[tipo.id] = {
-          faltantes,
-          repetidos: Array.from(repetidosSet).sort((a, b) => a - b),
-          presentes: arrUnicos.sort((a, b) => a - b),
-        };
+          resultados[tipo.id] = {
+            faltantes,
+            repetidos: Array.from(repetidosSet).sort((a, b) => a - b),
+            presentes: arrFiltrado.sort((a, b) => a - b),
+          };
+        }
       }
     }
   });

@@ -12,11 +12,18 @@ import {
   Folder,
   AlertCircle,
   CheckCircle2,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import type { Lote, Periodo, ArchivoSubido } from "@/types";
 import { MESES } from "@/lib/constantes";
 import { motion } from "framer-motion";
-import { calcularEstadoLote, colorEstado, analizarConsecutivos } from "@/lib/utils";
+import {
+  calcularEstadoLote,
+  colorEstado,
+  analizarConsecutivos,
+  agruparEnRangos,
+} from "@/lib/utils";
 import { EstadoBadge } from "./UIComunes";
 import { ModalCrearLote } from "./ModalCrearLote";
 import { VistaLote } from "./VistaLote";
@@ -45,6 +52,7 @@ export function VistaMes({
 }: VistaMesProps) {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [loteAbierto, setLoteAbierto] = useState<string | null>(null);
+  const [modoVista, setModoVista] = useState<"grid" | "list">("grid");
 
   const mesLabel = `${MESES[periodo.mes]} ${periodo.anio}`;
   const requeridos = TIPOS_DOCUMENTO.filter((t) => t.requerido);
@@ -122,25 +130,32 @@ export function VistaMes({
           boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
         }}
       >
-        <button
-          onClick={onVolver}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: "#64748b",
-            fontSize: 12,
-            fontWeight: 700,
-            marginBottom: 10,
-            padding: 0,
-            fontFamily: "inherit",
-          }}
-        >
-          <ArrowLeft size={14} /> Todos los meses
-        </button>
+        {/* Breadcrumb estilo Google Drive */}
+        <div className="drive-breadcrumb" style={{ marginBottom: 12 }}>
+          <button
+            onClick={onVolver}
+            className="drive-breadcrumb-item"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#1a73e8",
+              fontFamily: "inherit",
+              padding: "4px 8px",
+            }}
+          >
+            <Folder size={16} style={{ color: "#1a73e8", fill: "#1a73e820" }} />
+            <span>Mi unidad</span>
+          </button>
+          <ChevronRight size={14} style={{ color: "#747775" }} />
+          <div
+            className="drive-breadcrumb-item"
+            style={{ cursor: "default", fontWeight: 800, color: "#1f1f1f" }}
+          >
+            <Calendar size={15} style={{ color: "#f59e0b" }} />
+            <span>{mesLabel}</span>
+          </div>
+        </div>
 
         <div
           style={{
@@ -148,21 +163,22 @@ export function VistaMes({
             alignItems: "center",
             justifyContent: "space-between",
             gap: 12,
+            flexWrap: "wrap",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div
               style={{
-                width: 46,
-                height: 46,
-                borderRadius: 14,
+                width: 44,
+                height: 44,
+                borderRadius: 12,
                 background: "#fef3c7",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Calendar size={22} style={{ color: "#f59e0b" }} />
+              <Calendar size={20} style={{ color: "#f59e0b" }} />
             </div>
             <div>
               <h2
@@ -186,6 +202,52 @@ export function VistaMes({
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {/* Switcher Cuadrícula / Lista */}
+            <div
+              style={{
+                display: "flex",
+                background: "#f1f3f4",
+                borderRadius: 10,
+                padding: 3,
+                gap: 2,
+              }}
+            >
+              <button
+                onClick={() => setModoVista("grid")}
+                title="Vista en cuadrícula"
+                style={{
+                  background: modoVista === "grid" ? "#ffffff" : "transparent",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "5px 9px",
+                  cursor: "pointer",
+                  boxShadow: modoVista === "grid" ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+                  display: "flex",
+                  alignItems: "center",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <LayoutGrid size={15} style={{ color: modoVista === "grid" ? "#1a73e8" : "#5f6368" }} />
+              </button>
+              <button
+                onClick={() => setModoVista("list")}
+                title="Vista en lista"
+                style={{
+                  background: modoVista === "list" ? "#ffffff" : "transparent",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "5px 9px",
+                  cursor: "pointer",
+                  boxShadow: modoVista === "list" ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+                  display: "flex",
+                  alignItems: "center",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <List size={15} style={{ color: modoVista === "list" ? "#1a73e8" : "#5f6368" }} />
+              </button>
+            </div>
+
             {periodo.lotes.length > 0 && (
               <button
                 onClick={async () => {
@@ -198,8 +260,8 @@ export function VistaMes({
                   gap: 7,
                   background: "#fff",
                   color: "#475569",
-                  border: "1.5px solid #e2e8f0",
-                  borderRadius: 12,
+                  border: "1px solid #dadce0",
+                  borderRadius: 24,
                   padding: "8px 16px",
                   cursor: "pointer",
                   fontWeight: 700,
@@ -213,30 +275,18 @@ export function VistaMes({
             )}
             <button
               onClick={() => setModalAbierto(true)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 7,
-                background: "#10b981",
-                color: "#fff",
-                border: "none",
-                borderRadius: 12,
-                padding: "9px 18px",
-                cursor: "pointer",
-                fontWeight: 800,
-                fontSize: 12,
-                fontFamily: "inherit",
-                boxShadow: "0 4px 12px rgba(16, 185, 129, 0.15)",
-              }}
+              className="drive-pill-btn"
+              style={{ background: "#ffffff", color: "#1f1f1f" }}
             >
-              <Plus size={16} /> Nuevo Lote
+              <Plus size={16} style={{ color: "#1a73e8" }} />
+              <span>Nuevo Lote</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Contenido */}
-      <div style={{ padding: "20px 24px", maxWidth: 680, margin: "0 auto" }}>
+      <div style={{ padding: "20px 24px", maxWidth: modoVista === "grid" ? 960 : 680, margin: "0 auto", transition: "max-width 0.25s ease" }}>
         {/* Resumen del mes */}
         {periodo.lotes.length > 0 && (
           <div
@@ -307,32 +357,36 @@ export function VistaMes({
                       alignItems: "flex-start",
                     }}
                   >
-                    <div>
-                      <strong style={{ fontSize: 12, color: tieneProblemas ? "#92400e" : "#166534", display: "block", marginBottom: 4 }}>
-                        {tipoDef?.label} ({tipoDef?.nombre})
-                      </strong>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+                        <strong style={{ fontSize: 13, color: tieneProblemas ? "#92400e" : "#166534" }}>
+                          {tipoDef?.label} ({tipoDef?.nombre})
+                        </strong>
+                        <span style={{ fontSize: 11, color: tieneProblemas ? "#b45309" : "#15803d", fontWeight: 700 }}>
+                          Rango: del {Math.min(...alerta.presentes)} al {Math.max(...alerta.presentes)}
+                        </span>
+                      </div>
                       
                       {!tieneProblemas ? (
                         <p style={{ margin: 0, fontSize: 11, color: "#15803d", display: "flex", alignItems: "center", gap: 4 }}>
                           <CheckCircle2 size={13} />
-                          Secuencia correcta (del {Math.min(...alerta.presentes)} al {Math.max(...alerta.presentes)})
+                          Secuencia correcta y continua
                         </p>
                       ) : (
-                        <>
-                          <p style={{ margin: 0, fontSize: 11, color: "#b45309", marginBottom: 2 }}>
-                            <strong style={{ color: "#92400e" }}>Rango detectado:</strong> del {Math.min(...alerta.presentes)} al {Math.max(...alerta.presentes)}
-                          </p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 3 }}>
                           {alerta.faltantes.length > 0 && (
-                            <p style={{ margin: 0, fontSize: 11, color: "#b45309" }}>
-                              <strong style={{ color: "#92400e" }}>Faltan:</strong> {alerta.faltantes.join(", ")}
+                            <p style={{ margin: 0, fontSize: 11, color: "#b45309", lineHeight: 1.4 }}>
+                              <strong style={{ color: "#92400e" }}>Faltan ({alerta.faltantes.length} doc{alerta.faltantes.length !== 1 ? "s" : ""}):</strong>{" "}
+                              {agruparEnRangos(alerta.faltantes).slice(0, 8).join(", ")}
+                              {agruparEnRangos(alerta.faltantes).length > 8 ? ` y ${agruparEnRangos(alerta.faltantes).length - 8} más...` : ""}
                             </p>
                           )}
                           {alerta.repetidos.length > 0 && (
-                            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#b45309" }}>
+                            <p style={{ margin: 0, fontSize: 11, color: "#b45309" }}>
                               <strong style={{ color: "#92400e" }}>Repetidos:</strong> {alerta.repetidos.join(", ")}
                             </p>
                           )}
-                        </>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -395,181 +449,267 @@ export function VistaMes({
             </button>
           </div>
         ) : (
-          /* Lista de lotes */
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {periodo.lotes.map((lote) => {
-              const estado = calcularEstadoLote(lote);
-              const cargados = requeridos.filter(
-                (t) => (lote.documentos[t.id] ?? []).length > 0
-              ).length;
-              const totalArchivos = Object.values(lote.documentos).flat().length;
-              const progreso = (cargados / requeridos.length) * 100;
+          /* Explorador de Lotes - Estilo Google Drive */
+          <div>
+            <p
+              style={{
+                fontWeight: 700,
+                fontSize: 12,
+                color: "#444746",
+                margin: "0 0 12px 2px",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Folder size={14} style={{ color: "#5f6368" }} /> Carpetas de Lotes
+            </p>
 
-              return (
-                <motion.div
-                  key={lote.id}
-                  className="win-folder-card"
-                  whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
-                  transition={{ duration: 0.2 }}
-                  style={{
-                    borderColor: `${colorEstado(estado)}60`,
-                    marginTop: 14,
-                  }}
-                >
-                  {/* Solapa / Pestaña superior de Carpeta */}
-                  <div
-                    className="win-folder-tab"
-                    style={{
-                      background: colorEstado(estado),
-                      color: "#fff",
-                      borderColor: colorEstado(estado),
-                    }}
-                  >
-                    <Folder size={10} style={{ color: "#fff" }} /> LOTE PROVEEDOR
-                  </div>
-                  <div
-                    style={{
-                      padding: "16px 16px 14px 16px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                    }}
-                  >
-                    {/* Ícono */}
-                    <div
+            {modoVista === "grid" ? (
+              /* VISTA CUADRÍCULA (GRID) ESTILO GOOGLE DRIVE */
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                {periodo.lotes.map((lote) => {
+                  const estado = calcularEstadoLote(lote);
+                  const cargados = requeridos.filter(
+                    (t) => (lote.documentos[t.id] ?? []).length > 0
+                  ).length;
+                  const totalArchivos = Object.values(lote.documentos).flat().length;
+
+                  const folderColor =
+                    estado === "completo"
+                      ? "#1e8e3e"
+                      : estado === "incompleto"
+                      ? "#f9ab00"
+                      : "#5f6368";
+
+                  return (
+                    <motion.div
+                      key={lote.id}
+                      className="drive-folder-card"
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={() => setLoteAbierto(lote.id)}
                       style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 12,
-                        flexShrink: 0,
-                        background: `${colorEstado(estado)}18`,
+                        padding: "14px 16px",
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
                       }}
                     >
-                      <Folder size={20} style={{ color: colorEstado(estado) }} />
-                    </div>
-
-                    {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: 8,
-                          flexWrap: "wrap",
+                          gap: 12,
+                          minWidth: 0,
+                          flex: 1,
                         }}
                       >
-                        <span
+                        <Folder
+                          size={32}
                           style={{
-                            fontWeight: 800,
-                            fontSize: 14,
-                            color: "#0f172a",
-                          }}
-                        >
-                          {lote.proveedor}
-                        </span>
-                        <EstadoBadge estado={estado} />
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                          marginTop: 2,
-                        }}
-                      >
-                        {lote.referencia && (
-                          <span style={{ fontSize: 11, color: "#94a3b8" }}>
-                            Ref: {lote.referencia}
-                          </span>
-                        )}
-                        <span style={{ fontSize: 11, color: "#94a3b8" }}>
-                          {cargados}/{requeridos.length} req. · {totalArchivos} archivo
-                          {totalArchivos !== 1 ? "s" : ""}
-                        </span>
-                      </div>
-                      {/* Barra de progreso */}
-                      <div
-                        style={{
-                          marginTop: 7,
-                          height: 4,
-                          background: "#f1f5f9",
-                          borderRadius: 99,
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
-                          style={{
-                            height: "100%",
-                            background: colorEstado(estado),
-                            width: `${progreso}%`,
-                            borderRadius: 99,
-                            transition: "width 0.4s ease",
+                            color: folderColor,
+                            fill: `${folderColor}24`,
+                            flexShrink: 0,
                           }}
                         />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontWeight: 700,
+                              fontSize: 13,
+                              color: "#1f1f1f",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {lote.proveedor}
+                          </p>
+                          <p
+                            style={{
+                              margin: "2px 0 0",
+                              fontSize: 11,
+                              color: "#5f6368",
+                            }}
+                          >
+                            {cargados}/{requeridos.length} req · {totalArchivos} archivo{totalArchivos !== 1 ? "s" : ""}
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Acciones */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <EstadoBadge estado={estado} size="sm" />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              confirm(
+                                `¿Eliminar el lote "${lote.proveedor}"? Se perderán todos sus archivos.`
+                              )
+                            ) {
+                              onEliminarLote(lote.id);
+                            }
+                          }}
+                          title="Eliminar lote"
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: "6px",
+                            color: "#94a3b8",
+                            borderRadius: 6,
+                            display: "flex",
+                            alignItems: "center",
+                            transition: "all 0.15s",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = "#ef4444";
+                            e.currentTarget.style.background = "#fee2e2";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = "#94a3b8";
+                            e.currentTarget.style.background = "transparent";
+                          }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* VISTA LISTA ESTILO DRIVE */
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {periodo.lotes.map((lote) => {
+                  const estado = calcularEstadoLote(lote);
+                  const cargados = requeridos.filter(
+                    (t) => (lote.documentos[t.id] ?? []).length > 0
+                  ).length;
+                  const totalArchivos = Object.values(lote.documentos).flat().length;
+
+                  const folderColor =
+                    estado === "completo"
+                      ? "#1e8e3e"
+                      : estado === "incompleto"
+                      ? "#f9ab00"
+                      : "#5f6368";
+
+                  return (
                     <div
+                      key={lote.id}
+                      className="drive-folder-card"
+                      onClick={() => setLoteAbierto(lote.id)}
                       style={{
+                        padding: "12px 18px",
                         display: "flex",
-                        gap: 6,
-                        flexShrink: 0,
                         alignItems: "center",
+                        gap: 14,
                       }}
                     >
-                      <button
-                        onClick={() => setLoteAbierto(lote.id)}
+                      <Folder
+                        size={24}
                         style={{
-                          background: "#f8fafc",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: 10,
-                          padding: "7px 14px",
-                          cursor: "pointer",
-                          fontWeight: 700,
-                          fontSize: 11,
-                          color: "#475569",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 5,
-                          fontFamily: "inherit",
+                          color: folderColor,
+                          fill: `${folderColor}25`,
+                          flexShrink: 0,
                         }}
-                      >
-                        <FolderOpen size={13} /> Abrir
-                        <ChevronRight size={12} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `¿Eliminar el lote "${lote.proveedor}"? Se perderán todos sus archivos.`
-                            )
-                          ) {
-                            onEliminarLote(lote.id);
-                          }
-                        }}
-                        title="Eliminar lote"
-                        style={{
-                          background: "#fff0f0",
-                          border: "1px solid #fecaca",
-                          borderRadius: 10,
-                          padding: "7px 10px",
-                          cursor: "pointer",
-                          color: "#ef4444",
-                          display: "flex",
-                          alignItems: "center",
-                        }}
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#1f1f1f" }}>
+                            {lote.proveedor}
+                          </span>
+                          {lote.referencia && (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                color: "#64748b",
+                                background: "#f1f5f9",
+                                padding: "1px 6px",
+                                borderRadius: 4,
+                              }}
+                            >
+                              Ref: {lote.referencia}
+                            </span>
+                          )}
+                          <EstadoBadge estado={estado} size="sm" />
+                        </div>
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "#5f6368" }}>
+                          {cargados}/{requeridos.length} requeridos · {totalArchivos} archivo{totalArchivos !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLoteAbierto(lote.id);
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            background: "#f1f3f4",
+                            border: "none",
+                            borderRadius: 10,
+                            padding: "6px 14px",
+                            cursor: "pointer",
+                            fontWeight: 700,
+                            fontSize: 12,
+                            color: "#1f1f1f",
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          Abrir <ChevronRight size={13} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              confirm(
+                                `¿Eliminar el lote "${lote.proveedor}"? Se perderán todos sus archivos.`
+                              )
+                            ) {
+                              onEliminarLote(lote.id);
+                            }
+                          }}
+                          title="Eliminar lote"
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: "6px",
+                            color: "#94a3b8",
+                            borderRadius: 6,
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
