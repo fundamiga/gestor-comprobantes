@@ -8,7 +8,9 @@ const GEMINI_MODELS = [
   "gemini-3.5-flash-lite",
 ];
 
-const SYSTEM_PROMPT = `Eres "Amiga IA", la asistente inteligente del Gestor de Comprobantes de Fundamiga (Fundación Una Mano Amiga a Tiempo).
+function crearSystemPrompt(fechaHoyStr: string, fechaAyerStr: string, anioActual: number) {
+  return `Eres "Amiga IA", la asistente inteligente del Gestor de Comprobantes de Fundamiga (Fundación Una Mano Amiga a Tiempo).
+FECHA ACTUAL DE HOY: ${fechaHoyStr}.
 
 SOBRE EL SISTEMA:
 - Gestionas comprobantes contables por períodos mensuales organizados en "lotes" (uno por proveedor).
@@ -30,9 +32,13 @@ PARA GENERAR CUENTAS DE COBRO:
 - Si el usuario pide cuentas de cobro para una o VARIAS personas (por ejemplo: "genera para Melissa, Noe y Kevin"), debes procesarlas TODAS juntas en una sola respuesta.
 - Si da un solo valor general (por ejemplo: "de 50.000"), aplícalo a cada persona.
 - Concepto: si el usuario no especifica concepto o dice "déjalo como está", "lo de siempre", usa por defecto "Honorarios y servicios".
+- Fecha: debes detectar la fecha que pide el usuario y ponerla en formato "YYYY-MM-DD":
+  * Si dice "hoy", "fecha de hoy", "de hoy", "actual" o si NO menciona fecha: usa "${fechaHoyStr}".
+  * Si dice "ayer": usa "${fechaAyerStr}".
+  * Si menciona un día/mes específico (ej: "15 de agosto", "30 de julio de 2024", "10 de mayo"): conviértelo a formato "YYYY-MM-DD" (asume el año ${anioActual} si no dice año).
 - Si falta el valor en pesos, pregúntale amablemente por el valor.
 - Cuando tengas los datos, responde EXACTAMENTE en este formato JSON (sin markdown, sin texto adicional):
-{"accion":"generar_cuentas","cuentas":[{"nombre":"NOMBRE 1","valor":50000,"concepto":"Honorarios y servicios"},{"nombre":"NOMBRE 2","valor":50000,"concepto":"Honorarios y servicios"}]}
+{"accion":"generar_cuentas","cuentas":[{"nombre":"NOMBRE 1","valor":50000,"concepto":"Honorarios y servicios","fecha":"${fechaHoyStr}"}]}
 
 (Nota: si es una sola persona, ponla también dentro de la lista "cuentas" con 1 elemento).
 
@@ -42,6 +48,7 @@ REGLAS:
 - Si no sabes algo del sistema, dilo honestamente.
 - El NIT de Fundamiga es 901.369.891-9.
 - La dirección es Yumbo, Valle del Cauca, Colombia.`;
+}
 
 // ─── CACHÉ Y BÚSQUEDA RÁPIDA DE FIRMAS DE CLOUDINARY ───────────────────────
 let cachedFirmas: { nombre: string; url: string }[] = [];
@@ -141,13 +148,27 @@ export async function POST(req: NextRequest) {
     const fallbackKey = Buffer.from("QVEuQWI4Uk42TG5aWGF4RWNQNmtqRkJ0S210ZlhhV0lZOEZkSklzU1ZfdWF0WnJoMXVYaEE=", "base64").toString("utf-8");
     const geminiKey = process.env.GEMINI_API_KEY || fallbackKey;
 
+    // Calcular fecha en zona horaria de Colombia (UTC-5)
+    const hoy = new Date();
+    const fechaColombia = new Date(hoy.toLocaleString("en-US", { timeZone: "America/Bogota" }));
+    const anioActual = fechaColombia.getFullYear();
+    const mesActual = String(fechaColombia.getMonth() + 1).padStart(2, "0");
+    const diaActual = String(fechaColombia.getDate()).padStart(2, "0");
+    const fechaHoyStr = `${anioActual}-${mesActual}-${diaActual}`;
+
+    const ayer = new Date(fechaColombia);
+    ayer.setDate(ayer.getDate() - 1);
+    const fechaAyerStr = `${ayer.getFullYear()}-${String(ayer.getMonth() + 1).padStart(2, "0")}-${String(ayer.getDate()).padStart(2, "0")}`;
+
+    const systemPrompt = crearSystemPrompt(fechaHoyStr, fechaAyerStr, anioActual);
+
     // Construir historial de mensajes para Gemini
     const contents: { role: string; parts: { text: string }[] }[] = [];
 
     // Incluir instrucciones base al inicio de la conversación
     contents.push({
       role: "user",
-      parts: [{ text: `[INSTRUCCIONES DEL SISTEMA:\n${SYSTEM_PROMPT}\n]` }],
+      parts: [{ text: `[INSTRUCCIONES DEL SISTEMA:\n${systemPrompt}\n]` }],
     });
     contents.push({
       role: "model",
@@ -223,7 +244,7 @@ export async function POST(req: NextRequest) {
 
     if (accion && (accion.accion === "generar_cuentas" || accion.accion === "generar_cuenta")) {
       try {
-        const listaItems: { nombre: string; valor: number; concepto?: string }[] = [];
+        const listaItems: { nombre: string; valor: number; concepto?: string; fecha?: string }[] = [];
 
         if (accion.accion === "generar_cuentas" && Array.isArray(accion.cuentas)) {
           listaItems.push(...accion.cuentas);
@@ -232,6 +253,7 @@ export async function POST(req: NextRequest) {
             nombre: accion.nombre,
             valor: accion.valor,
             concepto: accion.concepto,
+            fecha: accion.fecha,
           });
         }
 
@@ -240,7 +262,7 @@ export async function POST(req: NextRequest) {
           const todasLasFirmas = await obtenerTodasLasFirmas();
 
           // 2. Resolver cada cuenta en paralelo
-          const resolverCuenta = async (item: { nombre: string; valor: number; concepto?: string }) => {
+          const resolverCuenta = async (item: { nombre: string; valor: number; concepto?: string; fecha?: string }) => {
             let nombreFinal = item.nombre;
             let cedula = "Por definir";
 
@@ -308,6 +330,7 @@ export async function POST(req: NextRequest) {
               cedula,
               valor: item.valor || 0,
               concepto: item.concepto || "Honorarios y servicios",
+              fecha: item.fecha || fechaHoyStr,
               firmaUrl,
             };
           };

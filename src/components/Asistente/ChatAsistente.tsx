@@ -27,6 +27,7 @@ interface DatosCuenta {
   cedula: string;
   valor: number;
   concepto: string;
+  fecha?: string;
   firmaUrl: string | null;
 }
 

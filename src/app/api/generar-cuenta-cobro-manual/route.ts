@@ -61,7 +61,15 @@ export async function POST(req: NextRequest) {
     // Fecha
     let fechaDate = new Date();
     if (fecha) {
-        fechaDate = new Date(`${fecha}T12:00:00`); 
+      if (fecha.includes("-")) {
+        const partes = fecha.split("-").map(Number);
+        if (partes.length === 3 && !isNaN(partes[0]) && !isNaN(partes[1]) && !isNaN(partes[2])) {
+          fechaDate = new Date(partes[0], partes[1] - 1, partes[2]);
+        }
+      } else {
+        const parsed = new Date(`${fecha}T12:00:00`);
+        if (!isNaN(parsed.getTime())) fechaDate = parsed;
+      }
     }
     const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const fechaTexto = `Yumbo, ${fechaDate.getDate()} de ${meses[fechaDate.getMonth()]} de ${fechaDate.getFullYear()}`;
