@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabaseLegal } from "@/lib/supabase-legal";
 import { uid } from "@/lib/utils";
 
 // ── Carpetas de documentos legales de Fundamiga ───────────────────────────────
@@ -30,7 +30,7 @@ export function useDocsLegales() {
 
   useEffect(() => {
     async function cargar() {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseLegal
         .from("docs_legales")
         .select("*")
         .order("fecha_subida", { ascending: false });
@@ -54,7 +54,7 @@ export function useDocsLegales() {
 
   const agregarDoc = useCallback(async (doc: DocLegal) => {
     setDocs((prev) => [doc, ...prev]);
-    await supabase.from("docs_legales").insert({
+    await supabaseLegal.from("docs_legales").insert({
       id: doc.id,
       nombre: doc.nombre,
       categoria: doc.categoria,
@@ -69,7 +69,7 @@ export function useDocsLegales() {
 
   const eliminarDoc = useCallback(async (id: string) => {
     setDocs((prev) => prev.filter((d) => d.id !== id));
-    await supabase.from("docs_legales").delete().eq("id", id);
+    await supabaseLegal.from("docs_legales").delete().eq("id", id);
   }, []);
 
   return { docs, cargado, agregarDoc, eliminarDoc };
