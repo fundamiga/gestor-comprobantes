@@ -51,13 +51,19 @@ export function ChatAsistente() {
     {
       id: "bienvenida",
       rol: "assistant",
-      texto: "Â¡Hola! Soy **Amiga IA**, tu bibliotecaria y auditora contable de Fundamiga. ðŸ“šâœ¨\n\nConozco todo el archivo contable y puedo:\n- ðŸ§­ **Llevarte a cualquier carpeta o archivo** (*\"llÃ©vame al lote de Melissa\"*, *\"muÃ©strame los DS de enero\"*)\n- ðŸ” **Auditar el orden y consecutivos** (*\"Â¿hay saltos en CC-10?\"*, *\"Â¿quÃ© falta en este mes?\"*)\n- ðŸ“ **Detectar parejas incompletas** y ayudarte a completarlas de inmediato\n- âœï¸ **Generar cuentas de cobro** en PDF con firma automÃ¡tica\n\nÂ¿En quÃ© te puedo apoyar?",
+      texto: "¡Hola! Soy **Amiga IA**, tu bibliotecaria y auditora contable de Fundamiga. 📚✨\n\nConozco todo el archivo contable y puedo:\n- 🧭 **Llevarte a cualquier carpeta o archivo** (*\"llévame al lote de Melissa\"*, *\"muéstrame los DS de enero\"*)\n- 🔍 **Auditar el orden y consecutivos** (*\"¿hay saltos en CC-10?\"*, *\"¿qué falta en este mes?\"*)\n- 📂 **Detectar parejas incompletas** y ayudarte a completarlas de inmediato\n- ✍️ **Generar cuentas de cobro** en PDF con firma automática\n\n¿En qué te puedo apoyar?",
     },
   ]);
   const [input, setInput] = useState("");
   const [cargando, setCargando] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const handleAbrir = () => setAbierto(true);
+    window.addEventListener("abrir-chat-asistente", handleAbrir);
+    return () => window.removeEventListener("abrir-chat-asistente", handleAbrir);
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -67,7 +73,7 @@ export function ChatAsistente() {
     if (abierto) setTimeout(() => inputRef.current?.focus(), 200);
   }, [abierto]);
 
-  // â”€â”€â”€ AuditorÃ­a profunda para el contexto de la Bibliotecaria â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Auditoría profunda para el contexto de la Bibliotecaria ──────────────────
   const construirContexto = () => {
     const periodoActivo = periodos.find((p) => p.id === periodoActivoId);
 
@@ -337,15 +343,32 @@ export function ChatAsistente() {
         if (tipoDef) label += ` > ${tipoDef.label}`;
         if (!label) label = "UbicaciÃ³n solicitada";
 
-        // Ejecutar navegaciÃ³n de inmediato
+        // Ejecutar navegación de inmediato
         navegarA(data.loteId, data.tipoId, data.periodoId);
+
+        // Si la respuesta menciona un problema o error, activar highlight lateral y visual
+        if (data.mensaje && /falt[ae]|incomplet|hu[eé]rfan|salto|gap|error|problem/i.test(data.mensaje)) {
+          const tipoProblem: "pareja_incompleta" | "consecutivo" | "tipo_faltante" | "general" =
+            /hu[eé]rfan[ao]|pareja|incompleto?/i.test(data.mensaje) ? "pareja_incompleta" :
+            /salto|consecutiv|falt[ae]\s+#?\d|gap/i.test(data.mensaje) ? "consecutivo" :
+            /tipo|carpeta/i.test(data.mensaje) ? "tipo_faltante" : "general";
+
+          setHighlight({
+            tipoId: data.tipoId,
+            loteId: data.loteId,
+            grupoNombre: loteTarget?.proveedor,
+            mensaje: data.mensaje,
+            tipo: tipoProblem,
+          });
+          setAbierto(false);
+        }
 
         setMensajes((prev) => [
           ...prev,
           {
             id: Date.now().toString() + "_nav",
             rol: "assistant",
-            texto: data.mensaje || `ðŸ“‚ Â¡Te llevo a: **${label}**!`,
+            texto: data.mensaje || `📂 ¡Te llevo a: **${label}**!`,
             navAccion: {
               periodoId: data.periodoId,
               loteId: data.loteId,

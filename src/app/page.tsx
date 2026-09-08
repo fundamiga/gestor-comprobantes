@@ -24,6 +24,7 @@ import { calcularEstadoLote, colorEstado, analizarConsecutivos } from "@/lib/uti
 import { EstadoBadge } from "@/components/comprobantes/UIComunes";
 import { VistaMes } from "@/components/comprobantes/VistaMes";
 import { ChatAsistente } from "@/components/Asistente/ChatAsistente";
+import { VentanaAlertaLateral } from "@/components/Asistente/VentanaAlertaLateral";
 import { AsistenteProvider } from "@/lib/asistente-context";
 import { BibliotecaLegal } from "@/components/legal/BibliotecaLegal";
 import type { EstadoLote } from "@/types";
@@ -214,11 +215,6 @@ export default function Home() {
 
   const handleSetHighlight = useCallback((info: import("@/lib/asistente-context").HighlightInfo | null) => {
     setHighlightInfo(info);
-    if (info) {
-      // Se borra automáticamente después de 8 segundos
-      const t = setTimeout(() => setHighlightInfo(null), 8000);
-      return () => clearTimeout(t);
-    }
   }, []);
 
   // Abrir o crear período
@@ -327,6 +323,7 @@ export default function Home() {
                 onVolver={() => setPeriodoAbierto(null)}
               />
             </motion.div>
+            <VentanaAlertaLateral />
             <ChatAsistente />
           </div>
         </AsistenteProvider>
@@ -946,6 +943,7 @@ export default function Home() {
           </div>
         </div>
       </motion.main>
+      <VentanaAlertaLateral />
       <ChatAsistente />
     </div>
     </AsistenteProvider>
