@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { agregarPersonaBD } from "@/lib/cedulas-db";
 
 export const dynamic = "force-dynamic";
 
@@ -15,33 +15,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const nombreStr = nombre.trim();
-    const cedulaStr = cedula.trim();
-
-    // Insertar en Supabase. Si el nombre ya existe (ignorando mayúsculas/minúsculas), fallará por el índice único
-    const { data, error } = await supabase
-      .from("proveedores")
-      .insert([{ nombre: nombreStr, cedula: cedulaStr }])
-      .select();
-
-    if (error) {
-      console.error("Error insertando proveedor en Supabase:", error);
-      if (error.code === '23505') { // Unique violation
-        return NextResponse.json(
-          { error: "Esta persona ya existe en la base de datos" },
-          { status: 409 }
-        );
-      }
-      throw error;
-    }
+    const resultado = await agregarPersonaBD(nombre, cedula);
 
     return NextResponse.json({
       success: true,
-      nombre: nombreStr,
-      cedula: cedulaStr,
+      ...resultado,
     });
   } catch (error: any) {
     console.error("Error en agregar-proveedor:", error);
+    if (error.code === "23505") {
+      return NextResponse.json(
+        { error: "Esta persona ya existe en la base de datos" },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

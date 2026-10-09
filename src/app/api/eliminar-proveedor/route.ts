@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { eliminarPersonaBD } from "@/lib/cedulas-db";
 
 export const dynamic = "force-dynamic";
 
@@ -15,15 +15,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const { error } = await supabase
-      .from("proveedores")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      console.error("Error eliminando proveedor en Supabase:", error);
-      throw error;
-    }
+    await eliminarPersonaBD(id);
 
     return NextResponse.json({
       success: true,

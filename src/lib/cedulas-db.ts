@@ -252,3 +252,78 @@ export async function buscarCedulaPorNombre(
 
   return null;
 }
+
+/**
+ * Invalida la memoria caché para reflejar cambios inmediatamente tras agregar/editar/eliminar.
+ */
+export function invalidarCacheCedulas() {
+  cachedProveedores = [];
+  lastFetch = 0;
+}
+
+/**
+ * Agrega una persona directamente en la base de datos principal (tabla trabajadores)
+ */
+export async function agregarPersonaBD(nombre: string, cedula: string) {
+  const nombreStr = nombre.trim();
+  const cedulaStr = cedula.trim();
+  const id = String(Date.now());
+
+  const { data, error } = await supabaseCedulasPrincipal
+    .from("trabajadores")
+    .insert([
+      {
+        id,
+        nombre: nombreStr,
+        cedula: cedulaStr,
+        valor_turno: 0,
+        valor_hora_adicional: 0,
+        forma_pago: "Efectivo",
+        cargo: "CONTRATISTA",
+      },
+    ])
+    .select();
+
+  if (error) throw error;
+  invalidarCacheCedulas();
+  return { id, nombre: nombreStr, cedula: cedulaStr };
+}
+
+/**
+ * Edita una persona directamente en la base de datos principal (tabla trabajadores)
+ */
+export async function editarPersonaBD(id: string, nombre: string, cedula: string) {
+  const nombreStr = nombre.trim();
+  const cedulaStr = cedula.trim();
+
+  // Si el id viene de un registro de Excel (ej: excel-local-1), creamos el registro en la BD principal
+  if (id.startsWith("excel-") || id.startsWith("local-") || id.startsWith("remes-")) {
+    return await agregarPersonaBD(nombreStr, cedulaStr);
+  }
+
+  const { data, error } = await supabaseCedulasPrincipal
+    .from("trabajadores")
+    .update({ nombre: nombreStr, cedula: cedulaStr })
+    .eq("id", id)
+    .select();
+
+  if (error) throw error;
+  invalidarCacheCedulas();
+  return { id, nombre: nombreStr, cedula: cedulaStr };
+}
+
+/**
+ * Elimina una persona de la base de datos principal
+ */
+export async function eliminarPersonaBD(id: string) {
+  // Si no es un id numérico de base de datos, solo invalidamos el caché
+  if (!id.startsWith("excel-") && !id.startsWith("local-") && !id.startsWith("remes-")) {
+    const { error } = await supabaseCedulasPrincipal
+      .from("trabajadores")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+  }
+  invalidarCacheCedulas();
+  return true;
+}
