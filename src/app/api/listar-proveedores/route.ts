@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { obtenerTodasLasCedulas } from "@/lib/cedulas-db";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const { data: proveedores, error } = await supabase
-      .from("proveedores")
-      .select("id, nombre, cedula")
-      .order("nombre", { ascending: true });
+    const { searchParams } = new URL(req.url);
+    const forzarRefresco = searchParams.get("refresh") === "true";
 
-    if (error) {
-      console.error("Error consultando proveedores en Supabase:", error);
-      throw error;
-    }
+    // Obtiene automáticamente de Supabase Principal (appfundaamiga-main)
+    // con respaldo local en memoria y Excel para garantizar respuesta ultra rápida y 100% disponible
+    const proveedores = await obtenerTodasLasCedulas(forzarRefresco);
 
-    return NextResponse.json({ proveedores: proveedores || [] });
+    return NextResponse.json({
+      success: true,
+      proveedores,
+      total: proveedores.length,
+    });
   } catch (error: any) {
     console.error("Error listando proveedores:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message, proveedores: [] }, { status: 500 });
   }
 }

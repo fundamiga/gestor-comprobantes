@@ -77,6 +77,22 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Si el NIT no se pudo extraer o está por definir, buscarlo en la base de datos principal de cédulas
+    try {
+      const { buscarCedulaPorNombre } = await import("@/lib/cedulas-db");
+      const encontrado = await buscarCedulaPorNombre(nombre);
+      if (encontrado) {
+        if (!nit || nit === "Por definir") {
+          nit = encontrado.cedula;
+        }
+        if (!nombre || nombre === "Proveedor") {
+          nombre = encontrado.nombre;
+        }
+      }
+    } catch (e) {
+      console.warn("Aviso al consultar cédula en base principal:", e);
+    }
+
     // Buscar firma
     let firmaUrl: string | null = formData.get("firmaUrl") as string | null;
     

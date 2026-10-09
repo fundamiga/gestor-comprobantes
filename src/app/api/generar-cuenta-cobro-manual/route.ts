@@ -32,6 +32,20 @@ export async function POST(req: NextRequest) {
       firmaUrl = formData.get("firmaUrl") as string | null;
     }
 
+    // Si el NIT está por definir o vacío, buscar en la base de datos principal de cédulas
+    if (!nit || nit === "Por definir") {
+      try {
+        const { buscarCedulaPorNombre } = await import("@/lib/cedulas-db");
+        const encontrado = await buscarCedulaPorNombre(nombre);
+        if (encontrado) {
+          nit = encontrado.cedula;
+          if (nombre === "Proveedor") nombre = encontrado.nombre;
+        }
+      } catch (e) {
+        console.warn("Aviso al consultar cédula en base principal:", e);
+      }
+    }
+
     // 1. Generar el PDF
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([595.28, 841.89]); // Tamaño A4

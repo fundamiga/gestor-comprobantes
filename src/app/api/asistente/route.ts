@@ -326,60 +326,16 @@ export async function POST(req: NextRequest) {
             let nombreFinal = item.nombre;
             let cedula = "Por definir";
 
-            // Buscar en Supabase (coincidencia flexible sin importar orden y con tolerancia a erratas)
+            // Buscar en la Base de Datos Principal de Cédulas y Respaldo
             try {
-              const palabras = item.nombre.trim().split(/\s+/).filter((p: string) => p.length >= 2);
-              let sbData: any[] = [];
-
-              if (palabras.length > 1) {
-                const conditions = palabras.map((p: string) => `nombre.ilike.%25${encodeURIComponent(p)}%25`).join(",");
-                const sbUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/proveedores?and=(${conditions})&select=nombre,cedula&limit=1`;
-                const sbRes = await fetch(sbUrl, {
-                  headers: {
-                    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-                    Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""}`,
-                  },
-                });
-                sbData = await sbRes.json();
-
-                // Si no encontró por errata (ej: "Kevon" en vez de "Kevin"), buscar por apellido
-                if (!sbData || sbData.length === 0) {
-                  for (const p of palabras) {
-                    if (p.length > 3) {
-                      const fallbackRes = await fetch(
-                        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/proveedores?nombre=ilike.%25${encodeURIComponent(p)}%25&select=nombre,cedula&limit=1`,
-                        {
-                          headers: {
-                            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-                            Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""}`,
-                          },
-                        }
-                      );
-                      const fData = await fallbackRes.json();
-                      if (fData && fData.length > 0) {
-                        sbData = fData;
-                        break;
-                      }
-                    }
-                  }
-                }
-              } else if (palabras.length === 1) {
-                const sbUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/proveedores?nombre=ilike.%25${encodeURIComponent(palabras[0])}%25&select=nombre,cedula&limit=1`;
-                const sbRes = await fetch(sbUrl, {
-                  headers: {
-                    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-                    Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""}`,
-                  },
-                });
-                sbData = await sbRes.json();
-              }
-
-              if (sbData?.[0]) {
-                if (sbData[0].nombre) nombreFinal = sbData[0].nombre;
-                if (sbData[0].cedula) cedula = sbData[0].cedula;
+              const { buscarCedulaPorNombre } = await import("@/lib/cedulas-db");
+              const encontrado = await buscarCedulaPorNombre(item.nombre);
+              if (encontrado) {
+                nombreFinal = encontrado.nombre;
+                cedula = encontrado.cedula;
               }
             } catch (e) {
-              console.warn("No se pudo consultar Supabase para", item.nombre, e);
+              console.warn("No se pudo consultar base de cédulas para", item.nombre, e);
             }
 
             // Buscar firma en memoria al instante (0 ms)
