@@ -541,33 +541,25 @@ export function VistaMes({
             </p>
 
             {modoVista === "grid" ? (
-              /* VISTA CUADRÍCULA — carpetas con clasificaciones y barra de progreso */
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(245px, 1fr))", gap: 14 }}>
+              /* VISTA CUADRÍCULA 3D — Carpetas realistas con hojas asomándose y clasificaciones */
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(255px, 1fr))", gap: 18 }}>
                 {lotesFiltrados.map((lote) => {
                   const estado = calcularEstadoLote(lote);
                   const cargados = requeridos.filter((t) => (lote.documentos[t.id] ?? []).length > 0).length;
-                  const totalArchivos = Object.values(lote.documentos).flat().length;
-                  const folderColor = estado === "completo" ? "#10b981" : estado === "incompleto" ? "#f59e0b" : "#94a3b8";
+                  const todosArchsLote = Object.values(lote.documentos).flat();
+                  const totalArchivos = todosArchsLote.length;
+                  const folderColor = estado === "completo" ? "#10b981" : estado === "incompleto" ? "#f59e0b" : "#64748b";
                   const porcentaje = requeridos.length > 0 ? Math.round((cargados / requeridos.length) * 100) : 0;
                   const opcionalesCargados = TIPOS_DOCUMENTO.filter(
                     (t) => !t.requerido && (lote.documentos[t.id] ?? []).length > 0
                   );
 
                   return (
-                    <motion.div
+                    <div
                       key={lote.id}
-                      className="drive-folder-card"
-                      whileHover={{ y: -3, boxShadow: "0 12px 24px -4px rgba(15, 23, 42, 0.12)" }}
-                      whileTap={{ scale: 0.99 }}
+                      className="pro-folder-3d"
                       onClick={() => setLoteAbierto(lote.id)}
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        overflow: "hidden",
-                        position: "relative",
-                        borderRadius: 16,
-                        border: estado === "completo" ? "1.5px solid #a7f3d0" : estado === "incompleto" ? "1.5px solid #fde68a" : "1.5px solid #e2e8f0",
-                      }}
+                      style={{ paddingTop: 18, position: "relative" }}
                       onMouseEnter={(e) => {
                         const btn = e.currentTarget.querySelector(".lote-del-btn") as HTMLElement | null;
                         if (btn) btn.style.opacity = "1";
@@ -577,120 +569,207 @@ export function VistaMes({
                         if (btn) btn.style.opacity = "0";
                       }}
                     >
-                      {/* Barra superior de progreso */}
-                      <div style={{ height: 4, width: "100%", background: "#f1f5f9" }}>
-                        <div
-                          style={{
-                            height: "100%",
-                            width: `${porcentaje}%`,
-                            background: folderColor,
-                            transition: "width 0.3s ease",
-                          }}
-                        />
+                      {/* Pestaña física superior de la carpeta de Lote */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 2,
+                          left: 14,
+                          height: 22,
+                          padding: "0 12px",
+                          borderRadius: "10px 10px 0 0",
+                          background: folderColor,
+                          color: "#ffffff",
+                          fontSize: 10,
+                          fontWeight: 900,
+                          letterSpacing: "0.05em",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5,
+                          zIndex: 1,
+                        }}
+                      >
+                        <span>{lote.referencia ? `REF #${lote.referencia}` : "LOTE CONTABLE"}</span>
                       </div>
 
-                      {/* Thumbnail */}
-                      <div style={{
-                        height: 78,
-                        background: `linear-gradient(150deg, ${folderColor}18, ${folderColor}05)`,
-                        borderBottom: `1px solid ${folderColor}20`,
-                        display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
-                      }}>
-                        <Folder size={40} style={{ color: folderColor, fill: `${folderColor}28` }} />
-                        {lote.referencia && (
-                          <span
-                            style={{
-                              position: "absolute",
-                              bottom: 6,
-                              left: 8,
-                              fontSize: 9.5,
-                              fontWeight: 800,
-                              fontFamily: "monospace",
-                              background: "rgba(255,255,255,0.92)",
-                              color: "#334155",
-                              border: "1px solid #e2e8f0",
-                              borderRadius: 6,
-                              padding: "1px 6px",
-                            }}
-                          >
-                            Ref #{lote.referencia}
-                          </span>
-                        )}
-                        <div style={{ position: "absolute", top: 7, right: 8 }}>
-                          <EstadoBadge estado={estado} size="sm" />
-                        </div>
+                      {/* Estado y botón eliminar arriba a la derecha */}
+                      <div style={{ position: "absolute", top: 2, right: 10, zIndex: 5, display: "flex", alignItems: "center", gap: 6 }}>
+                        <EstadoBadge estado={estado} size="sm" />
                         <button
                           className="lote-del-btn"
                           onClick={(e) => { e.stopPropagation(); if (confirm(`¿Eliminar "${lote.proveedor}"? Se perderán todos sus archivos.`)) onEliminarLote(lote.id); }}
                           title="Eliminar lote"
-                          style={{ position: "absolute", top: 6, left: 6, opacity: 0, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.9)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "opacity 0.15s, background 0.12s", color: "#64748b", boxShadow: "0 1px 3px rgba(0,0,0,0.12)" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.color = "#ef4444"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.9)"; e.currentTarget.style.color = "#64748b"; }}
+                          style={{ opacity: 0, width: 24, height: 24, borderRadius: "50%", border: "1px solid #fecaca", background: "#ffffff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "opacity 0.15s, background 0.12s", color: "#ef4444", boxShadow: "0 2px 5px rgba(0,0,0,0.12)" }}
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={12} />
                         </button>
                       </div>
 
-                      {/* Info y Clasificaciones del Lote */}
-                      <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8, flex: 1, justifyContent: "space-between" }}>
-                        <div>
-                          <p style={{ margin: 0, fontWeight: 800, fontSize: 13.5, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={lote.proveedor}>
-                            {lote.proveedor}
-                          </p>
+                      {/* Cuerpo trasero + Hojas de documentos asomándose */}
+                      <div
+                        style={{
+                          position: "relative",
+                          borderRadius: "14px 14px 16px 16px",
+                          background: `linear-gradient(145deg, ${folderColor}30 0%, ${folderColor}10 100%)`,
+                          border: estado === "completo" ? "1.5px solid #6ee7b7" : estado === "incompleto" ? "1.5px solid #fcd34d" : "1.5px solid #cbd5e1",
+                          paddingTop: 34,
+                          overflow: "hidden",
+                        }}
+                      >
+                        {totalArchivos > 0 ? (
+                          <>
+                            <div
+                              className="pro-folder-sheet-1"
+                              style={{
+                                position: "absolute",
+                                top: 8,
+                                left: 16,
+                                right: 42,
+                                height: 36,
+                                background: "#ffffff",
+                                borderRadius: "6px 6px 0 0",
+                                border: "1px solid #cbd5e1",
+                                padding: "5px 8px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 5,
+                                zIndex: 1,
+                              }}
+                            >
+                              <span style={{ width: 6, height: 6, borderRadius: "50%", background: folderColor, flexShrink: 0 }} />
+                              <span style={{ fontSize: 8.5, fontWeight: 700, color: "#475569", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {todosArchsLote[0]?.nombre}
+                              </span>
+                            </div>
+                            {totalArchivos > 1 && (
+                              <div
+                                className="pro-folder-sheet-2"
+                                style={{
+                                  position: "absolute",
+                                  top: 12,
+                                  left: 36,
+                                  right: 14,
+                                  height: 34,
+                                  background: "#f8fafc",
+                                  borderRadius: "6px 6px 0 0",
+                                  border: "1px solid #cbd5e1",
+                                  padding: "5px 8px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 5,
+                                  zIndex: 2,
+                                }}
+                              >
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#3b82f6", flexShrink: 0 }} />
+                                <span style={{ fontSize: 8.5, fontWeight: 700, color: "#334155", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  {todosArchsLote[1]?.nombre}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 9,
+                              left: 16,
+                              right: 16,
+                              height: 22,
+                              border: "1px dashed #94a3b8",
+                              borderRadius: "6px 6px 0 0",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 8.5,
+                              color: "#64748b",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Sin soportes cargados
+                          </div>
+                        )}
 
-                          {/* Chips de Clasificaciones Requeridas (CC-9, DS, CC-6, CC-10) + Opcionales subidos */}
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
-                            {requeridos.map((req) => {
-                              const count = (lote.documentos[req.id] ?? []).length;
-                              const ok = count >= (req.minArchivos ?? 1);
-                              return (
+                        {/* Solapa frontal de la carpeta de Lote */}
+                        <div
+                          className="pro-folder-flap"
+                          style={{
+                            position: "relative",
+                            zIndex: 3,
+                            background: "#ffffff",
+                            borderRadius: "12px 12px 14px 14px",
+                            borderTop: `3px solid ${folderColor}`,
+                            padding: "13px 14px 12px",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 9,
+                            boxShadow: "0 -3px 10px rgba(15, 23, 42, 0.06)",
+                          }}
+                        >
+                          <div>
+                            <p style={{ margin: 0, fontWeight: 900, fontSize: 14, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={lote.proveedor}>
+                              {lote.proveedor}
+                            </p>
+
+                            {/* Chips de Clasificaciones Requeridas (CC-9, DS, CC-6, CC-10) + Opcionales */}
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
+                              {requeridos.map((req) => {
+                                const count = (lote.documentos[req.id] ?? []).length;
+                                const ok = count >= (req.minArchivos ?? 1);
+                                return (
+                                  <span
+                                    key={req.id}
+                                    title={`${req.label} (${req.nombre}): ${count} archivo(s)`}
+                                    style={{
+                                      fontSize: 9.5,
+                                      fontWeight: 800,
+                                      padding: "2px 6px",
+                                      borderRadius: 6,
+                                      background: ok ? `${req.color}18` : count > 0 ? "#fef3c7" : "#f1f5f9",
+                                      color: ok ? req.color : count > 0 ? "#b45309" : "#94a3b8",
+                                      border: `1px solid ${ok ? req.color + "45" : count > 0 ? "#fde68a" : "#e2e8f0"}`,
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 3,
+                                    }}
+                                  >
+                                    <span>{ok ? "✓" : count > 0 ? "!" : "○"}</span>
+                                    <span>{req.label}</span>
+                                  </span>
+                                );
+                              })}
+                              {opcionalesCargados.slice(0, 2).map((opt) => (
                                 <span
-                                  key={req.id}
-                                  title={`${req.label} (${req.nombre}): ${count} archivo(s)`}
+                                  key={opt.id}
+                                  title={`${opt.label} (${opt.nombre})`}
                                   style={{
                                     fontSize: 9.5,
                                     fontWeight: 800,
                                     padding: "2px 6px",
                                     borderRadius: 6,
-                                    background: ok ? `${req.color}18` : count > 0 ? "#fef3c7" : "#f1f5f9",
-                                    color: ok ? req.color : count > 0 ? "#b45309" : "#94a3b8",
-                                    border: `1px solid ${ok ? req.color + "45" : count > 0 ? "#fde68a" : "#e2e8f0"}`,
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 3,
+                                    background: `${opt.color}15`,
+                                    color: opt.color,
+                                    border: `1px solid ${opt.color}35`,
                                   }}
                                 >
-                                  <span>{ok ? "✓" : count > 0 ? "!" : "○"}</span>
-                                  <span>{req.label}</span>
+                                  +{opt.label}
                                 </span>
-                              );
-                            })}
-                            {opcionalesCargados.slice(0, 2).map((opt) => (
-                              <span
-                                key={opt.id}
-                                title={`${opt.label} (${opt.nombre})`}
-                                style={{
-                                  fontSize: 9.5,
-                                  fontWeight: 800,
-                                  padding: "2px 6px",
-                                  borderRadius: 6,
-                                  background: `${opt.color}15`,
-                                  color: opt.color,
-                                  border: `1px solid ${opt.color}35`,
-                                }}
-                              >
-                                +{opt.label}
-                              </span>
-                            ))}
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Barra de progreso visual */}
+                          <div>
+                            <div style={{ height: 5, width: "100%", background: "#f1f5f9", borderRadius: 99, overflow: "hidden", marginBottom: 6 }}>
+                              <div style={{ height: "100%", width: `${porcentaje}%`, background: folderColor, borderRadius: 99, transition: "width 0.3s ease" }} />
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 10.5, color: "#64748b", fontWeight: 700 }}>
+                              <span>{cargados}/{requeridos.length} obligatorios · {totalArchivos} arch.</span>
+                              <span style={{ color: "#1a73e8", fontWeight: 800 }}>Abrir →</span>
+                            </div>
                           </div>
                         </div>
-
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 8, borderTop: "1px solid #f1f5f9", fontSize: 10.5, color: "#64748b", fontWeight: 700 }}>
-                          <span>{cargados}/{requeridos.length} obligatorios · {totalArchivos} arch.</span>
-                          <span style={{ color: "#1a73e8", fontWeight: 800 }}>Abrir →</span>
-                        </div>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </div>

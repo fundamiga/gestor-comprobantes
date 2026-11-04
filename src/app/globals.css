@@ -44,15 +44,116 @@ body {
 .drive-folder-card {
   background: #ffffff;
   border: 1px solid var(--drive-border);
-  border-radius: 12px;
-  transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  border-radius: 16px;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
   overflow: hidden;
+  position: relative;
 }
 .drive-folder-card:hover {
-  background: #f8f9fa;
-  border-color: #bdc1c6;
-  box-shadow: 0 2px 6px rgba(60,64,67,0.15), 0 1px 2px rgba(60,64,67,0.08);
+  background: #ffffff;
+  border-color: #94a3b8;
+  box-shadow: 0 14px 28px -6px rgba(15, 23, 42, 0.12), 0 4px 10px -2px rgba(15, 23, 42, 0.06);
+  transform: translateY(-3px);
+}
+
+/* ── Carpeta 3D Realista con hojas asomándose ───────────────────────────────── */
+.pro-folder-3d {
+  position: relative;
+  width: 100%;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pro-folder-3d:hover {
+  transform: translateY(-5px);
+}
+.pro-folder-3d:hover .pro-folder-sheet-1 {
+  transform: translateY(-9px) rotate(-4deg) scale(1.03);
+}
+.pro-folder-3d:hover .pro-folder-sheet-2 {
+  transform: translateY(-12px) rotate(3deg) scale(1.04);
+}
+.pro-folder-3d:hover .pro-folder-flap {
+  transform: perspective(500px) rotateX(-10deg);
+  box-shadow: 0 16px 32px -8px rgba(15, 23, 42, 0.18);
+}
+.pro-folder-sheet-1,
+.pro-folder-sheet-2 {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pro-folder-flap {
+  transform-origin: bottom center;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease;
+}
+
+/* ── Workspace Layout (Sidebar + Main Canvas) ───────────────────────────────── */
+.drive-workspace-shell {
+  display: flex;
+  min-height: 100vh;
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.drive-sidebar {
+  width: 268px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  z-index: 40;
+}
+.drive-main-canvas {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  border-radius: 20px 0 0 0;
+  margin-top: 0;
+  overflow-x: hidden;
+}
+@media (max-width: 900px) {
+  .drive-sidebar {
+    display: none;
+  }
+  .drive-main-canvas {
+    border-radius: 0;
+  }
+}
+
+.drive-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  font-family: inherit;
+}
+.drive-nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+.drive-nav-item.active {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0.06) 100%);
+  color: #34d399;
+  border-left: 3px solid #10b981;
+  font-weight: 700;
 }
 
 /* ── Subfolder (pareja) ─────────────────────────────────────────────────────── */
