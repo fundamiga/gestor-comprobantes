@@ -175,133 +175,121 @@ export function ZonaUpload({
           {archivos.map((arch) => (
             <div
               key={arch.id}
+              className="drive-file-row"
               style={{
+                background: "#ffffff",
+                border: "1px solid #e0e2e6",
+                borderRadius: 10,
+                padding: "8px 12px",
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
-                background: "#f8fafc",
-                borderRadius: 10,
-                padding: "7px 10px",
-                border: "1px solid #e2e8f0",
+                gap: 10,
               }}
             >
               {arch.tipo === "application/pdf" ? (
                 <FileText
-                  size={14}
-                  style={{ color: "#ef4444", flexShrink: 0 }}
+                  size={16}
+                  style={{ color: "#ea4335", flexShrink: 0 }}
                 />
               ) : arch.nombre.endsWith(".xls") || arch.nombre.endsWith(".xlsx") || arch.tipo.includes("excel") || arch.tipo.includes("spreadsheetml") ? (
                 <FileSpreadsheet
-                  size={14}
-                  style={{ color: "#10b981", flexShrink: 0 }}
+                  size={16}
+                  style={{ color: "#1e8e3e", flexShrink: 0 }}
                 />
               ) : (
                 <ImageIcon
-                  size={14}
-                  style={{ color: "#3b82f6", flexShrink: 0 }}
+                  size={16}
+                  style={{ color: "#1a73e8", flexShrink: 0 }}
                 />
               )}
               <span
                 style={{
-                  fontSize: 11,
-                  color: "#475569",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: "#1f1f1f",
                   flex: 1,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  cursor: "pointer",
                 }}
+                onClick={() => onVer(arch)}
+                title={arch.nombre}
               >
                 {arch.nombre}
               </span>
-              <span style={{ fontSize: 10, color: "#94a3b8", flexShrink: 0 }}>
+              <span style={{ fontSize: 11, color: "#747775", flexShrink: 0 }}>
                 {formatKb(arch.tamanioKb)}
               </span>
-              <button
-                onClick={() => onVer(arch)}
-                title="Ver archivo"
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#64748b",
-                  padding: 2,
-                  display: "flex",
-                }}
-              >
-                <Eye size={14} />
-              </button>
-              <a
-                href={obtenerUrlDescargaCloudinary(arch.url)}
-                download={arch.nombre}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Descargar archivo individual"
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#64748b",
-                  padding: 2,
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                <Download size={14} />
-              </a>
-              {tipoDoc.id === "DS" && arch.tipo === "application/pdf" && (
+              <div className="drive-file-actions" style={{ display: "flex", alignItems: "center", gap: 3 }}>
                 <button
-                  onClick={() => abrirModalAutocompletar(arch)}
-                  title="Generar Cuenta de Cobro (PDF) y adjuntar a pareja"
-                  style={{
-                    background: "#10b981",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "#fff",
-                    padding: "4px 8px",
-                    borderRadius: 6,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    marginLeft: 4,
-                  }}
+                  onClick={() => onVer(arch)}
+                  title="Vista previa rápida"
+                  className="drive-icon-btn"
+                  style={{ width: 28, height: 28 }}
                 >
-                  <Wand2 size={12} /> Autocompletar
+                  <Eye size={14} />
                 </button>
-              )}
-              <button
-                onClick={() => onEliminar(arch.id)}
-                title="Eliminar"
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#ef4444",
-                  padding: 2,
-                  display: "flex",
-                }}
-              >
-                <Trash2 size={14} />
-              </button>
+                <a
+                  href={obtenerUrlDescargaCloudinary(arch.url)}
+                  download={arch.nombre}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Descargar archivo"
+                  className="drive-icon-btn"
+                  style={{ width: 28, height: 28 }}
+                >
+                  <Download size={14} />
+                </a>
+                {tipoDoc.id === "DS" && arch.tipo === "application/pdf" && (
+                  <button
+                    onClick={() => abrirModalAutocompletar(arch)}
+                    title="Generar Cuenta de Cobro (PDF) y adjuntar a pareja"
+                    style={{
+                      background: "#1e8e3e",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#fff",
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      marginLeft: 4,
+                    }}
+                  >
+                    <Wand2 size={12} /> Autocompletar
+                  </button>
+                )}
+                <button
+                  onClick={() => onEliminar(arch.id)}
+                  title="Eliminar archivo"
+                  className="drive-icon-btn"
+                  style={{ width: 28, height: 28, color: "#d93025" }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Zona de drag & drop */}
+      {/* Zona de drag & drop estilo Drive */}
       {!ocultarDropzone && (
         <motion.div
-          whileHover={{ scale: 1.01, borderColor: tipoDoc.color }}
+          whileHover={{ borderColor: tipoDoc.color }}
           whileTap={{ scale: 0.99 }}
           style={{
-            border: `2px dashed ${drag ? tipoDoc.color : "#cbd5e1"}`,
+            border: `2px dashed ${drag ? tipoDoc.color : "#c4c7cc"}`,
             borderRadius: 12,
-            padding: "16px 12px",
-            background: drag ? `${tipoDoc.color}12` : "#fafbfc",
+            padding: "16px 14px",
+            background: drag ? `${tipoDoc.color}10` : "#f8fafd",
             cursor: cargando ? "wait" : "pointer",
             textAlign: "center",
-            transition: "border-color 0.2s, background 0.2s",
+            transition: "border-color 0.15s, background 0.15s",
           }}
           onDragOver={(e) => {
             e.preventDefault();
@@ -316,21 +304,21 @@ export function ZonaUpload({
           onClick={() => !cargando && inputRef.current?.click()}
         >
           <Upload
-            size={16}
-            style={{ color: tipoDoc.color, margin: "0 auto 4px" }}
+            size={18}
+            style={{ color: drag ? tipoDoc.color : "#1a73e8", margin: "0 auto 6px" }}
           />
           <p
             style={{
-              fontSize: 11,
-              color: "#64748b",
+              fontSize: 12,
+              color: "#1f1f1f",
               fontWeight: 600,
               margin: 0,
             }}
           >
-            {cargando ? "Cargando..." : "Subir foto, PDF o Excel"}
+            {cargando ? "Cargando archivo(s)..." : "Subir archivo o arrastra aquí"}
           </p>
-          <p style={{ fontSize: 10, color: "#94a3b8", margin: "2px 0 0" }}>
-            Arrastra o haz clic · JPG, PNG, PDF, Excel
+          <p style={{ fontSize: 10.5, color: "#5f6368", margin: "3px 0 0" }}>
+            PDF, imágenes o Excel · Arrastra directamente desde tu explorador
           </p>
           <input
             ref={inputRef}

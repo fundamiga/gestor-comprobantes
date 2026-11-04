@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   ArrowLeft,
   Calendar,
@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   LayoutGrid,
   List,
+  Search,
+  X,
 } from "lucide-react";
 import type { Lote, Periodo, ArchivoSubido } from "@/types";
 import { MESES } from "@/lib/constantes";
@@ -57,6 +59,8 @@ export function VistaMes({
   const [modalAbierto, setModalAbierto] = useState(false);
   const [loteAbierto, setLoteAbierto] = useState<string | null>(loteInicialId ?? null);
   const [modoVista, setModoVista] = useState<"grid" | "list">("grid");
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState<"todos" | "completo" | "incompleto" | "vacio">("todos");
 
   useEffect(() => {
     if (loteInicialId) {
@@ -97,6 +101,21 @@ export function VistaMes({
       );
     }
   }
+
+  const lotesFiltrados = useMemo(() => {
+    return periodo.lotes.filter((l) => {
+      const est = calcularEstadoLote(l);
+      if (filtroEstado !== "todos" && est !== filtroEstado) return false;
+      if (busqueda.trim()) {
+        const q = busqueda.toLowerCase().trim();
+        const prov = l.proveedor.toLowerCase().includes(q);
+        const ref = (l.referencia || "").toLowerCase().includes(q);
+        const arch = Object.values(l.documentos).flat().some(a => a.nombre.toLowerCase().includes(q));
+        return prov || ref || arch;
+      }
+      return true;
+    });
+  }, [periodo.lotes, filtroEstado, busqueda]);
 
   const completos = periodo.lotes.filter(
     (l) => calcularEstadoLote(l) === "completo"
@@ -298,8 +317,59 @@ export function VistaMes({
 
       {/* Contenido */}
       <div style={{ padding: "16px 24px", maxWidth: modoVista === "grid" ? 1100 : 720, margin: "0 auto", transition: "max-width 0.25s ease" }}>
+
+        {/* Barra de búsqueda y filtros estilo Google Drive */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+          <div className="drive-search-bar" style={{ flex: 1, minWidth: 260 }}>
+            <Search size={16} style={{ color: "#5f6368", flexShrink: 0 }} />
+            <input
+              type="text"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar en este mes (proveedor, referencia o archivo)..."
+            />
+            {busqueda && (
+              <button
+                onClick={() => setBusqueda("")}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#5f6368", padding: 2, display: "flex" }}
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <button
+              onClick={() => setFiltroEstado("todos")}
+              className={"drive-filter-chip" + (filtroEstado === "todos" ? " active" : "")}
+            >
+              Todos ({periodo.lotes.length})
+            </button>
+            <button
+              onClick={() => setFiltroEstado("completo")}
+              className={"drive-filter-chip" + (filtroEstado === "completo" ? " active" : "")}
+            >
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#1e8e3e" }} />
+              Completos ({completos})
+            </button>
+            <button
+              onClick={() => setFiltroEstado("incompleto")}
+              className={"drive-filter-chip" + (filtroEstado === "incompleto" ? " active" : "")}
+            >
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f9ab00" }} />
+              Incompletos ({incompletos})
+            </button>
+            <button
+              onClick={() => setFiltroEstado("vacio")}
+              className={"drive-filter-chip" + (filtroEstado === "vacio" ? " active" : "")}
+            >
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#9aa0a6" }} />
+              Sin docs ({vacios})
+            </button>
+          </div>
+        </div>
         {/* Resumen del mes — chips compactos */}
-        {periodo.lotes.length > 0 && (
+        {false && periodo.lotes.length > 0 && (
           <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
             {[
               { label: "Completos", valor: completos, color: "#1e8e3e", bg: "#e6f4ea", dot: "#1e8e3e" },
@@ -392,7 +462,7 @@ export function VistaMes({
             {modoVista === "grid" ? (
               /* VISTA CUADRÍCULA — carpetas con thumbnail estilo Drive */
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(168px, 1fr))", gap: 8 }}>
-                {periodo.lotes.map((lote) => {
+                {lotesFiltrados.map((lote) => {
                   const estado = calcularEstadoLote(lote);
                   const cargados = requeridos.filter((t) => (lote.documentos[t.id] ?? []).length > 0).length;
                   const totalArchivos = Object.values(lote.documentos).flat().length;
@@ -459,7 +529,7 @@ export function VistaMes({
             ) : (
               /* VISTA LISTA ESTILO DRIVE */
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {periodo.lotes.map((lote) => {
+                {lotesFiltrados.map((lote) => {
                   const estado = calcularEstadoLote(lote);
                   const cargados = requeridos.filter(
                     (t) => (lote.documentos[t.id] ?? []).length > 0

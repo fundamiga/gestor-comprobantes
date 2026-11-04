@@ -65,6 +65,45 @@ export function VistaLote({
   const alertasConsecutivos = analizarConsecutivos(periodo);
   const hayDatosConsecutivos = Object.keys(alertasConsecutivos).length > 0;
 
+
+  const handleDropArchivosEnCarpeta = async (tipoId: string, files: FileList) => {
+    const permitidos = Array.from(files).filter(
+      (f) =>
+        f.type.startsWith("image/") ||
+        f.type === "application/pdf" ||
+        f.type === "application/vnd.ms-excel" ||
+        f.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+        f.name.endsWith(".xls") ||
+        f.name.endsWith(".xlsx")
+    );
+    if (permitidos.length === 0) return;
+
+    const { subirACloudinary } = await import("@/lib/cloudinary");
+    const { uid } = await import("@/lib/utils");
+
+    for (const f of permitidos) {
+      const toastId = toast.loading(`Subiendo "${f.name}" a ${tipoId}...`);
+      try {
+        const url = await subirACloudinary(f);
+        const nuevo: ArchivoSubido = {
+          id: uid(),
+          nombre: f.name,
+          tipo: f.type,
+          url,
+          fechaSubida: new Date().toLocaleDateString("es-CO"),
+          tamanioKb: Math.round(f.size / 1024),
+          grupoId: "grupo_inicial",
+          grupoNombre: "Pareja 1",
+        };
+        onAgregarArchivo(tipoId, nuevo);
+        toast.success(`"${f.name}" guardado en ${tipoId}`, { id: toastId });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error desconocido";
+        toast.error(`Error al subir "${f.name}": ${msg}`, { id: toastId });
+      }
+    }
+  };
+
   const handleDescargarLote = async () => {
     const todosArchivos = TIPOS_DOCUMENTO.flatMap(
       (tipo) => lote.documentos[tipo.id] ?? []
@@ -432,32 +471,7 @@ export function VistaLote({
       {/* Contenido */}
       <div style={{ padding: "20px 24px", maxWidth: vistaModo === "grid" ? 1080 : 720, margin: "0 auto", transition: "max-width 0.3s ease" }}>
         
-        {/* BOTÓN ORIGINAL DE GUARDAR (Reinsertado) */}
-        <div style={{ marginBottom: 20 }}>
-           <button
-             onClick={() => {
-               toast.success("¡Sincronización manual completada!");
-             }}
-             style={{
-               width: "100%",
-               display: "inline-flex",
-               alignItems: "center",
-               justifyContent: "center",
-               gap: 10,
-               padding: "14px 24px",
-               background: "#10b981",
-               color: "#fff",
-               borderRadius: 14,
-               fontSize: 14,
-               fontWeight: 900,
-               cursor: "pointer",
-               boxShadow: "0 6px 16px rgba(16, 185, 129, 0.25)",
-               border: "none"
-             }}
-           >
-             <CheckCircle2 size={20} /> GUARDAR CAMBIOS DE ESTE LOTE
-           </button>
-        </div>
+
         {faltantes.length > 0 && (
           <div
             style={{
@@ -588,6 +602,7 @@ export function VistaLote({
                       tipo={tipo}
                       numArchivos={(lote.documentos[tipo.id] ?? []).length}
                       onClick={() => setCarpetaAbierta(tipo.id)}
+                      onDropFiles={(files) => handleDropArchivosEnCarpeta(tipo.id, files)}
                     />
                   ))}
                 </div>
@@ -605,6 +620,7 @@ export function VistaLote({
                       tipo={tipo}
                       numArchivos={(lote.documentos[tipo.id] ?? []).length}
                       onClick={() => setCarpetaAbierta(tipo.id)}
+                      onDropFiles={(files) => handleDropArchivosEnCarpeta(tipo.id, files)}
                     />
                   ))}
                 </div>
@@ -622,6 +638,7 @@ export function VistaLote({
                       tipo={tipo}
                       numArchivos={(lote.documentos[tipo.id] ?? []).length}
                       onClick={() => setCarpetaAbierta(tipo.id)}
+                      onDropFiles={(files) => handleDropArchivosEnCarpeta(tipo.id, files)}
                     />
                   ))}
                 </div>
