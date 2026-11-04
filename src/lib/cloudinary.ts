@@ -1,6 +1,7 @@
 export async function subirACloudinary(file: File): Promise<string> {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET; // Necesitaremos configurar un preset en Cloudinary
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dlnyx3m4a';
+  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'manoamiga';
+
 
   if (!cloudName || !uploadPreset) {
     throw new Error('Faltan credenciales de Cloudinary');
