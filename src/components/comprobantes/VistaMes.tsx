@@ -71,6 +71,23 @@ export function VistaMes({
   const mesLabel = `${MESES[periodo.mes]} ${periodo.anio}`;
   const requeridos = TIPOS_DOCUMENTO.filter((t) => t.requerido);
 
+  const lotesFiltrados = useMemo(() => {
+    return periodo.lotes.filter((l) => {
+      const est = calcularEstadoLote(l);
+      if (filtroEstado !== "todos" && est !== filtroEstado) return false;
+      if (busqueda.trim()) {
+        const q = busqueda.toLowerCase().trim();
+        const prov = l.proveedor.toLowerCase().includes(q);
+        const ref = (l.referencia || "").toLowerCase().includes(q);
+        const arch = Object.values(l.documentos)
+          .flat()
+          .some((a) => a.nombre.toLowerCase().includes(q));
+        return prov || ref || arch;
+      }
+      return true;
+    });
+  }, [periodo.lotes, filtroEstado, busqueda]);
+
   // Si hay un lote abierto, mostrar VistaLote
   if (loteAbierto) {
     const lote = periodo.lotes.find((l) => l.id === loteAbierto);
@@ -101,21 +118,6 @@ export function VistaMes({
       );
     }
   }
-
-  const lotesFiltrados = useMemo(() => {
-    return periodo.lotes.filter((l) => {
-      const est = calcularEstadoLote(l);
-      if (filtroEstado !== "todos" && est !== filtroEstado) return false;
-      if (busqueda.trim()) {
-        const q = busqueda.toLowerCase().trim();
-        const prov = l.proveedor.toLowerCase().includes(q);
-        const ref = (l.referencia || "").toLowerCase().includes(q);
-        const arch = Object.values(l.documentos).flat().some(a => a.nombre.toLowerCase().includes(q));
-        return prov || ref || arch;
-      }
-      return true;
-    });
-  }, [periodo.lotes, filtroEstado, busqueda]);
 
   const completos = periodo.lotes.filter(
     (l) => calcularEstadoLote(l) === "completo"
