@@ -618,13 +618,13 @@ export default function Home() {
               <Folder size={14} style={{ color: "#5f6368" }} /> Carpetas de Períodos
             </p>
 
-            {/* VISTA CUADRÍCULA (GRID) ESTILO GOOGLE DRIVE */}
+            {/* VISTA CUADRÍCULA (GRID) ESTILO GOOGLE DRIVE PRO */}
             {modoVista === "grid" ? (
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-                  gap: 12,
+                  gridTemplateColumns: "repeat(auto-fill, minmax(265px, 1fr))",
+                  gap: 14,
                 }}
               >
                 {periodos.map((periodo) => {
@@ -637,6 +637,10 @@ export default function Home() {
                   const sinDocs = periodo.lotes.filter(
                     (l) => calcularEstadoLote(l) === "vacio"
                   ).length;
+                  const totalArchivosMes = periodo.lotes.reduce(
+                    (acc, l) => acc + Object.values(l.documentos).flat().length,
+                    0
+                  );
                   const estadoGeneral: EstadoLote =
                     periodo.lotes.length === 0
                       ? "vacio"
@@ -646,79 +650,87 @@ export default function Home() {
 
                   const folderColor =
                     estadoGeneral === "completo"
-                      ? "#1e8e3e"
+                      ? "#10b981"
                       : estadoGeneral === "incompleto"
-                      ? "#f9ab00"
-                      : "#5f6368";
+                      ? "#f59e0b"
+                      : "#64748b";
+
+                  const pct =
+                    periodo.lotes.length > 0
+                      ? Math.round((completos / periodo.lotes.length) * 100)
+                      : 0;
 
                   return (
                     <motion.div
                       key={periodo.id}
                       className="drive-folder-card"
-                      whileHover={{ scale: 1.01 }}
+                      whileHover={{ y: -3, boxShadow: "0 12px 24px -4px rgba(15, 23, 42, 0.12)" }}
                       whileTap={{ scale: 0.99 }}
                       onClick={() => setPeriodoAbierto(periodo.id)}
                       style={{
-                        padding: "14px 16px",
+                        padding: 0,
                         display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 12,
+                        flexDirection: "column",
+                        borderRadius: 16,
+                        overflow: "hidden",
+                        border:
+                          estadoGeneral === "completo"
+                            ? "1.5px solid #a7f3d0"
+                            : estadoGeneral === "incompleto"
+                            ? "1.5px solid #fde68a"
+                            : "1.5px solid #e2e8f0",
                       }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                          minWidth: 0,
-                          flex: 1,
-                        }}
-                      >
-                        <Folder
-                          size={32}
+                      {/* Barra superior de progreso del mes */}
+                      <div style={{ height: 4, width: "100%", background: "#f1f5f9" }}>
+                        <div
                           style={{
-                            color: folderColor,
-                            fill: `${folderColor}24`,
-                            flexShrink: 0,
+                            height: "100%",
+                            width: `${pct}%`,
+                            background: folderColor,
+                            transition: "width 0.3s ease",
                           }}
                         />
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <p
-                            style={{
-                              margin: 0,
-                              fontWeight: 700,
-                              fontSize: 14,
-                              color: "#1f1f1f",
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            {MESES[periodo.mes]} {periodo.anio}
-                          </p>
-                          <p
-                            style={{
-                              margin: "2px 0 0",
-                              fontSize: 11,
-                              color: "#5f6368",
-                            }}
-                          >
-                            {periodo.lotes.length} lote{periodo.lotes.length !== 1 ? "s" : ""}
-                            {completos > 0 ? ` · ${completos} compl.` : ""}
-                          </p>
-                        </div>
                       </div>
 
+                      {/* Thumbnail de carpeta estilo Google Drive */}
                       <div
                         style={{
+                          height: 76,
+                          background: `linear-gradient(150deg, ${folderColor}18, ${folderColor}05)`,
+                          borderBottom: `1px solid ${folderColor}20`,
                           display: "flex",
                           alignItems: "center",
-                          gap: 6,
-                          flexShrink: 0,
+                          justifyContent: "space-between",
+                          padding: "0 16px",
                         }}
                       >
-                        <EstadoBadge estado={estadoGeneral} size="sm" />
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <Folder
+                            size={38}
+                            style={{
+                              color: folderColor,
+                              fill: `${folderColor}28`,
+                              flexShrink: 0,
+                            }}
+                          />
+                          <div>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontWeight: 800,
+                                fontSize: 15,
+                                color: "#0f172a",
+                              }}
+                            >
+                              {MESES[periodo.mes]} {periodo.anio}
+                            </p>
+                            <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>
+                              {totalArchivosMes} archivo{totalArchivosMes !== 1 ? "s" : ""} en total
+                            </span>
+                          </div>
+                        </div>
+
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -732,12 +744,12 @@ export default function Home() {
                           }}
                           title="Eliminar período"
                           style={{
-                            background: "transparent",
-                            border: "none",
+                            background: "rgba(255,255,255,0.85)",
+                            border: "1px solid #e2e8f0",
                             cursor: "pointer",
                             padding: "6px",
                             color: "#94a3b8",
-                            borderRadius: 6,
+                            borderRadius: 8,
                             display: "flex",
                             alignItems: "center",
                             transition: "all 0.15s",
@@ -748,11 +760,68 @@ export default function Home() {
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.color = "#94a3b8";
-                            e.currentTarget.style.background = "transparent";
+                            e.currentTarget.style.background = "rgba(255,255,255,0.85)";
                           }}
                         >
-                          <Trash2 size={15} />
+                          <Trash2 size={14} />
                         </button>
+                      </div>
+
+                      {/* Pie de tarjeta con desglose de lotes */}
+                      <div
+                        style={{
+                          padding: "12px 16px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          background: "#ffffff",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 800,
+                              color: "#334155",
+                              background: "#f1f5f9",
+                              padding: "2px 8px",
+                              borderRadius: 6,
+                            }}
+                          >
+                            {periodo.lotes.length} lote{periodo.lotes.length !== 1 ? "s" : ""}
+                          </span>
+                          {completos > 0 && (
+                            <span
+                              style={{
+                                fontSize: 10.5,
+                                fontWeight: 800,
+                                color: "#065f46",
+                                background: "#d1fae5",
+                                padding: "2px 7px",
+                                borderRadius: 6,
+                              }}
+                            >
+                              ✓ {completos} compl.
+                            </span>
+                          )}
+                          {incompletos > 0 && (
+                            <span
+                              style={{
+                                fontSize: 10.5,
+                                fontWeight: 800,
+                                color: "#92400e",
+                                background: "#fef3c7",
+                                padding: "2px 7px",
+                                borderRadius: 6,
+                              }}
+                            >
+                              ! {incompletos} pend.
+                            </span>
+                          )}
+                        </div>
+
+                        <EstadoBadge estado={estadoGeneral} size="sm" />
                       </div>
                     </motion.div>
                   );

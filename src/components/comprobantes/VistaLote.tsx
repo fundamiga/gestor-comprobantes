@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Building2, AlertCircle, CheckCircle, CheckCircle2, Info, FileDown, Edit2, Check, X, Folder, FolderOpen, LayoutGrid, List, HardDrive, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Building2, AlertCircle, CheckCircle, CheckCircle2, Info, FileDown, Edit2, Check, X, Folder, FolderOpen, LayoutGrid, List, HardDrive, ChevronRight, PenTool } from "lucide-react";
 import type { Lote, Periodo, ArchivoSubido } from "@/types";
 import { TIPOS_DOCUMENTO, MESES } from "@/lib/constantes";
 import { calcularEstadoLote, analizarConsecutivos } from "@/lib/utils";
@@ -420,6 +421,29 @@ export function VistaLote({
                 <LayoutGrid size={13} /> Carpetas
               </button>
             </div>
+            {/* Acceso directo a Cuentas de Cobro y Firmas */}
+            <Link
+              href="/generar-cuenta-cobro"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: "#eff6ff",
+                color: "#2563eb",
+                border: "1px solid #bfdbfe",
+                borderRadius: 12,
+                padding: "9px 14px",
+                cursor: "pointer",
+                fontWeight: 800,
+                fontSize: 12,
+                fontFamily: "inherit",
+                textDecoration: "none",
+              }}
+              title="Generar Cuentas de Cobro y Gestionar Firmas y Cédulas"
+            >
+              <PenTool size={14} /> Firmas / Cuentas
+            </Link>
+
             {/* Botón Descargar Lote */}
             <button
               onClick={handleDescargarLote}
@@ -578,6 +602,100 @@ export function VistaLote({
           </p>
         </div>
 
+        {/* Barra rápida de Clasificaciones y Carpetas del Lote */}
+        <div
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e2e8f0",
+            borderRadius: 16,
+            padding: "12px 16px",
+            marginBottom: 18,
+            boxShadow: "0 2px 8px rgba(15, 23, 42, 0.03)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Navegación Rápida por Clasificación
+            </span>
+            <span style={{ fontSize: 10.5, color: "#64748b", fontWeight: 600 }}>
+              Haz clic en cualquier carpeta para abrirla o cambiar de clasificación
+            </span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {TIPOS_DOCUMENTO.map((t) => {
+              const archs = lote.documentos[t.id] ?? [];
+              const count = archs.length;
+              const activa = carpetaAbierta === t.id;
+              const minReq = t.minArchivos ?? 1;
+              const listo = count >= minReq;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    if (vistaModo === "grid") {
+                      setCarpetaAbierta(activa ? null : t.id);
+                    } else {
+                      const el = document.getElementById(`tipo-${t.id}`);
+                      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }
+                  }}
+                  title={`${t.label} — ${t.nombre} (${count} archivos)`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: "5px 10px",
+                    borderRadius: 99,
+                    border: activa
+                      ? `2px solid ${t.color}`
+                      : listo
+                      ? `1.5px solid ${t.color}55`
+                      : t.requerido && count === 0
+                      ? "1.5px dashed #fca5a5"
+                      : "1px solid #e2e8f0",
+                    background: activa
+                      ? `${t.color}18`
+                      : listo
+                      ? `${t.color}0d`
+                      : "#f8fafc",
+                    color: activa || listo ? t.color : "#475569",
+                    fontSize: 11,
+                    fontWeight: activa ? 900 : 700,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: listo ? "#10b981" : count > 0 ? "#f59e0b" : t.requerido ? "#ef4444" : "#cbd5e1",
+                    }}
+                  />
+                  <span>{t.label}</span>
+                  {count > 0 && (
+                    <span
+                      style={{
+                        fontSize: 9.5,
+                        fontWeight: 800,
+                        background: "#ffffff",
+                        border: `1px solid ${t.color}35`,
+                        color: t.color,
+                        borderRadius: 99,
+                        padding: "0 5px",
+                      }}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* === VISTA GRID: EXPLORADOR DE CARPETAS === */}
         {vistaModo === "grid" && (
           carpetaAbierta === null ? (
@@ -595,12 +713,14 @@ export function VistaLote({
                 <h3 style={{ fontSize: 12, fontWeight: 900, color: "#475569", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.07em", display: "flex", alignItems: "center", gap: 6 }}>
                   <Folder size={14} style={{ color: "#f59e0b" }} /> Comprobantes Contables
                 </h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(185px, 1fr))", gap: 14 }}>
                   {TIPOS_DOCUMENTO.filter(t => t.categoria === "comprobantes").map(tipo => (
                     <CarpetaIcono
                       key={tipo.id}
                       tipo={tipo}
                       numArchivos={(lote.documentos[tipo.id] ?? []).length}
+                      archivos={lote.documentos[tipo.id] ?? []}
+                      alertaConsecutivo={alertasConsecutivos[tipo.id]}
                       onClick={() => setCarpetaAbierta(tipo.id)}
                       onDropFiles={(files) => handleDropArchivosEnCarpeta(tipo.id, files)}
                     />
@@ -613,12 +733,14 @@ export function VistaLote({
                 <h3 style={{ fontSize: 12, fontWeight: 900, color: "#0d9488", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.07em", display: "flex", alignItems: "center", gap: 6 }}>
                   <Folder size={14} style={{ color: "#0d9488" }} /> Conciliaciones — Bancos
                 </h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(185px, 1fr))", gap: 14 }}>
                   {TIPOS_DOCUMENTO.filter(t => t.categoria === "bancos").map(tipo => (
                     <CarpetaIcono
                       key={tipo.id}
                       tipo={tipo}
                       numArchivos={(lote.documentos[tipo.id] ?? []).length}
+                      archivos={lote.documentos[tipo.id] ?? []}
+                      alertaConsecutivo={alertasConsecutivos[tipo.id]}
                       onClick={() => setCarpetaAbierta(tipo.id)}
                       onDropFiles={(files) => handleDropArchivosEnCarpeta(tipo.id, files)}
                     />
@@ -631,12 +753,14 @@ export function VistaLote({
                 <h3 style={{ fontSize: 12, fontWeight: 900, color: "#65a30d", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.07em", display: "flex", alignItems: "center", gap: 6 }}>
                   <Folder size={14} style={{ color: "#65a30d" }} /> Conciliaciones — Caja
                 </h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(185px, 1fr))", gap: 14 }}>
                   {TIPOS_DOCUMENTO.filter(t => t.categoria === "caja").map(tipo => (
                     <CarpetaIcono
                       key={tipo.id}
                       tipo={tipo}
                       numArchivos={(lote.documentos[tipo.id] ?? []).length}
+                      archivos={lote.documentos[tipo.id] ?? []}
+                      alertaConsecutivo={alertasConsecutivos[tipo.id]}
                       onClick={() => setCarpetaAbierta(tipo.id)}
                       onDropFiles={(files) => handleDropArchivosEnCarpeta(tipo.id, files)}
                     />
@@ -650,13 +774,16 @@ export function VistaLote({
                   <h3 style={{ fontSize: 12, fontWeight: 900, color: "#64748b", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.07em", display: "flex", alignItems: "center", gap: 6 }}>
                     <Folder size={14} style={{ color: "#64748b" }} /> Otros Documentos
                   </h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(185px, 1fr))", gap: 14 }}>
                     {TIPOS_DOCUMENTO.filter(t => t.categoria === "otros").map(tipo => (
                       <CarpetaIcono
                         key={tipo.id}
                         tipo={tipo}
                         numArchivos={(lote.documentos[tipo.id] ?? []).length}
+                        archivos={lote.documentos[tipo.id] ?? []}
+                        alertaConsecutivo={alertasConsecutivos[tipo.id]}
                         onClick={() => setCarpetaAbierta(tipo.id)}
+                        onDropFiles={(files) => handleDropArchivosEnCarpeta(tipo.id, files)}
                       />
                     ))}
                   </div>

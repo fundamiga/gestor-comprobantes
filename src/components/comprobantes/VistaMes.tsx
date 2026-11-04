@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import {
   ArrowLeft,
   Calendar,
@@ -16,6 +17,8 @@ import {
   List,
   Search,
   X,
+  PenTool,
+  Hash,
 } from "lucide-react";
 import type { Lote, Periodo, ArchivoSubido } from "@/types";
 import { MESES } from "@/lib/constantes";
@@ -280,6 +283,28 @@ export function VistaMes({
               </button>
             </div>
 
+            <Link
+              href="/generar-cuenta-cobro"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "#eff6ff",
+                color: "#2563eb",
+                border: "1px solid #bfdbfe",
+                borderRadius: 24,
+                padding: "8px 14px",
+                cursor: "pointer",
+                fontWeight: 800,
+                fontSize: 12,
+                fontFamily: "inherit",
+                textDecoration: "none",
+              }}
+              title="Crear Cuentas de Cobro y Gestionar Firmas y Cédulas"
+            >
+              <PenTool size={14} /> Firmas / Cuentas
+            </Link>
+
             {periodo.lotes.length > 0 && (
               <button
                 onClick={async () => {
@@ -308,9 +333,9 @@ export function VistaMes({
             <button
               onClick={() => setModalAbierto(true)}
               className="drive-pill-btn"
-              style={{ background: "#ffffff", color: "#1f1f1f" }}
+              style={{ background: "#1a73e8", color: "#ffffff", border: "none" }}
             >
-              <Plus size={16} style={{ color: "#1a73e8" }} />
+              <Plus size={16} style={{ color: "#ffffff" }} />
               <span>Nuevo Lote</span>
             </button>
           </div>
@@ -370,27 +395,79 @@ export function VistaMes({
             </button>
           </div>
         </div>
-        {/* Resumen del mes — chips compactos */}
-        {false && periodo.lotes.length > 0 && (
-          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-            {[
-              { label: "Completos", valor: completos, color: "#1e8e3e", bg: "#e6f4ea", dot: "#1e8e3e" },
-              { label: "Incompletos", valor: incompletos, color: "#b06000", bg: "#fef3c7", dot: "#f9ab00" },
-              { label: "Sin docs", valor: vacios, color: "#5f6368", bg: "#f1f3f4", dot: "#9aa0a6" },
-            ].map((item) => (
-              <div key={item.label} style={{
-                display: "flex", alignItems: "center", gap: 7,
-                background: item.bg, borderRadius: 99,
-                padding: "5px 14px 5px 10px", border: `1px solid ${item.dot}30`,
-              }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.dot, display: "inline-block" }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: item.color }}>{item.valor}</span>
-                <span style={{ fontSize: 11, color: item.color, opacity: 0.8 }}>{item.label}</span>
-              </div>
-            ))}
+        {/* Barra rápida de Secuencia y Consecutivos del Mes */}
+        {hayDatosConsecutivos && (
+          <div
+            style={{
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
+              borderRadius: 16,
+              padding: "12px 16px",
+              marginBottom: 18,
+              boxShadow: "0 2px 8px rgba(15, 23, 42, 0.03)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: "#0f172a", textTransform: "uppercase", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 6 }}>
+                <Hash size={14} style={{ color: "#1a73e8" }} /> Secuencia y Orden de Consecutivos del Mes
+              </span>
+              <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>
+                Auditoría automática por clasificación
+              </span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 8 }}>
+              {Object.entries(alertasConsecutivos).map(([tipoId, alerta]) => {
+                const tipoDef = TIPOS_DOCUMENTO.find((t) => t.id === tipoId);
+                const tieneProblemas = alerta.faltantes.length > 0 || alerta.repetidos.length > 0;
+                return (
+                  <div
+                    key={tipoId}
+                    style={{
+                      background: tieneProblemas ? "#fffbeb" : "#f0fdf4",
+                      border: `1px solid ${tieneProblemas ? "#fde68a" : "#bbf7d0"}`,
+                      borderRadius: 12,
+                      padding: "8px 12px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 800, color: tipoDef?.color || "#0f172a" }}>
+                        {tipoDef?.label} · {tipoDef?.nombre}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontFamily: "monospace",
+                          fontWeight: 800,
+                          background: "#ffffff",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 6,
+                          padding: "1px 6px",
+                          color: "#334155",
+                        }}
+                      >
+                        #{Math.min(...alerta.presentes)} – #{Math.max(...alerta.presentes)}
+                      </span>
+                    </div>
+                    {!tieneProblemas ? (
+                      <div style={{ fontSize: 10.5, color: "#15803d", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
+                        <CheckCircle2 size={11} /> Secuencia continua ({alerta.presentes.length} docs)
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 10.5, color: "#b45309", fontWeight: 700, marginTop: 4 }}>
+                        {alerta.faltantes.length > 0 && (
+                          <div>⚠ Faltan ({alerta.faltantes.length}): {agruparEnRangos(alerta.faltantes).slice(0, 4).join(", ")}{agruparEnRangos(alerta.faltantes).length > 4 ? "…" : ""}</div>
+                        )}
+                        {alerta.repetidos.length > 0 && (
+                          <div>⚠ Repetidos: {alerta.repetidos.join(", ")}</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
-
 
         {/* Lista vacía */}
         {periodo.lotes.length === 0 ? (
@@ -445,39 +522,52 @@ export function VistaMes({
             </button>
           </div>
         ) : (
-          /* Explorador de Lotes - Estilo Google Drive */
+          /* Explorador de Lotes - Estilo Google Drive Pro */
           <div>
             <p
               style={{
-                fontWeight: 700,
+                fontWeight: 800,
                 fontSize: 12,
-                color: "#444746",
+                color: "#334155",
                 margin: "0 0 12px 2px",
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
               }}
             >
-              <Folder size={14} style={{ color: "#5f6368" }} /> Carpetas de Lotes
+              <Folder size={14} style={{ color: "#1a73e8" }} /> Carpetas de Lotes ({lotesFiltrados.length})
             </p>
 
             {modoVista === "grid" ? (
-              /* VISTA CUADRÍCULA — carpetas con thumbnail estilo Drive */
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(168px, 1fr))", gap: 8 }}>
+              /* VISTA CUADRÍCULA — carpetas con clasificaciones y barra de progreso */
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(245px, 1fr))", gap: 14 }}>
                 {lotesFiltrados.map((lote) => {
                   const estado = calcularEstadoLote(lote);
                   const cargados = requeridos.filter((t) => (lote.documentos[t.id] ?? []).length > 0).length;
                   const totalArchivos = Object.values(lote.documentos).flat().length;
-                  const folderColor = estado === "completo" ? "#1e8e3e" : estado === "incompleto" ? "#f9ab00" : "#9aa0a6";
+                  const folderColor = estado === "completo" ? "#10b981" : estado === "incompleto" ? "#f59e0b" : "#94a3b8";
+                  const porcentaje = requeridos.length > 0 ? Math.round((cargados / requeridos.length) * 100) : 0;
+                  const opcionalesCargados = TIPOS_DOCUMENTO.filter(
+                    (t) => !t.requerido && (lote.documentos[t.id] ?? []).length > 0
+                  );
 
                   return (
                     <motion.div
                       key={lote.id}
                       className="drive-folder-card"
-                      whileHover={{ y: -1 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ y: -3, boxShadow: "0 12px 24px -4px rgba(15, 23, 42, 0.12)" }}
+                      whileTap={{ scale: 0.99 }}
                       onClick={() => setLoteAbierto(lote.id)}
-                      style={{ display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        overflow: "hidden",
+                        position: "relative",
+                        borderRadius: 16,
+                        border: estado === "completo" ? "1.5px solid #a7f3d0" : estado === "incompleto" ? "1.5px solid #fde68a" : "1.5px solid #e2e8f0",
+                      }}
                       onMouseEnter={(e) => {
                         const btn = e.currentTarget.querySelector(".lote-del-btn") as HTMLElement | null;
                         if (btn) btn.style.opacity = "1";
@@ -487,42 +577,118 @@ export function VistaMes({
                         if (btn) btn.style.opacity = "0";
                       }}
                     >
+                      {/* Barra superior de progreso */}
+                      <div style={{ height: 4, width: "100%", background: "#f1f5f9" }}>
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${porcentaje}%`,
+                            background: folderColor,
+                            transition: "width 0.3s ease",
+                          }}
+                        />
+                      </div>
+
                       {/* Thumbnail */}
                       <div style={{
-                        height: 76,
-                        background: `linear-gradient(150deg, ${folderColor}18, ${folderColor}06)`,
+                        height: 78,
+                        background: `linear-gradient(150deg, ${folderColor}18, ${folderColor}05)`,
                         borderBottom: `1px solid ${folderColor}20`,
                         display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
                       }}>
-                        <Folder size={38} style={{ color: folderColor, fill: `${folderColor}28` }} />
-                        {estado === "completo" && (
-                          <span style={{ position: "absolute", top: 6, right: 6, background: "#1e8e3e", color: "#fff", fontSize: 8, fontWeight: 800, padding: "1px 5px", borderRadius: 99 }}>✓</span>
+                        <Folder size={40} style={{ color: folderColor, fill: `${folderColor}28` }} />
+                        {lote.referencia && (
+                          <span
+                            style={{
+                              position: "absolute",
+                              bottom: 6,
+                              left: 8,
+                              fontSize: 9.5,
+                              fontWeight: 800,
+                              fontFamily: "monospace",
+                              background: "rgba(255,255,255,0.92)",
+                              color: "#334155",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: 6,
+                              padding: "1px 6px",
+                            }}
+                          >
+                            Ref #{lote.referencia}
+                          </span>
                         )}
-                        {estado === "incompleto" && (
-                          <span style={{ position: "absolute", top: 6, right: 6, background: "#f9ab00", color: "#fff", fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 99 }}>!</span>
-                        )}
+                        <div style={{ position: "absolute", top: 7, right: 8 }}>
+                          <EstadoBadge estado={estado} size="sm" />
+                        </div>
                         <button
                           className="lote-del-btn"
                           onClick={(e) => { e.stopPropagation(); if (confirm(`¿Eliminar "${lote.proveedor}"? Se perderán todos sus archivos.`)) onEliminarLote(lote.id); }}
                           title="Eliminar lote"
-                          style={{ position: "absolute", top: 5, left: 5, opacity: 0, width: 24, height: 24, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.07)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "opacity 0.15s, background 0.12s", color: "#5f6368" }}
+                          style={{ position: "absolute", top: 6, left: 6, opacity: 0, width: 26, height: 26, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.9)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "opacity 0.15s, background 0.12s", color: "#64748b", boxShadow: "0 1px 3px rgba(0,0,0,0.12)" }}
                           onMouseEnter={(e) => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.color = "#ef4444"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.07)"; e.currentTarget.style.color = "#5f6368"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.9)"; e.currentTarget.style.color = "#64748b"; }}
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={13} />
                         </button>
                       </div>
-                      {/* Info */}
-                      <div style={{ padding: "9px 11px 10px" }}>
-                        <p style={{ margin: 0, fontWeight: 600, fontSize: 12.5, color: "#202124", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {lote.proveedor}
-                        </p>
-                        {lote.referencia && (
-                          <p style={{ margin: "1px 0 0", fontSize: 10.5, color: "#5f6368", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lote.referencia}</p>
-                        )}
-                        <p style={{ margin: "3px 0 0", fontSize: 10, color: "#9aa0a6" }}>
-                          {cargados}/{requeridos.length} tipos · {totalArchivos} arch.
-                        </p>
+
+                      {/* Info y Clasificaciones del Lote */}
+                      <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8, flex: 1, justifyContent: "space-between" }}>
+                        <div>
+                          <p style={{ margin: 0, fontWeight: 800, fontSize: 13.5, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={lote.proveedor}>
+                            {lote.proveedor}
+                          </p>
+
+                          {/* Chips de Clasificaciones Requeridas (CC-9, DS, CC-6, CC-10) + Opcionales subidos */}
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
+                            {requeridos.map((req) => {
+                              const count = (lote.documentos[req.id] ?? []).length;
+                              const ok = count >= (req.minArchivos ?? 1);
+                              return (
+                                <span
+                                  key={req.id}
+                                  title={`${req.label} (${req.nombre}): ${count} archivo(s)`}
+                                  style={{
+                                    fontSize: 9.5,
+                                    fontWeight: 800,
+                                    padding: "2px 6px",
+                                    borderRadius: 6,
+                                    background: ok ? `${req.color}18` : count > 0 ? "#fef3c7" : "#f1f5f9",
+                                    color: ok ? req.color : count > 0 ? "#b45309" : "#94a3b8",
+                                    border: `1px solid ${ok ? req.color + "45" : count > 0 ? "#fde68a" : "#e2e8f0"}`,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 3,
+                                  }}
+                                >
+                                  <span>{ok ? "✓" : count > 0 ? "!" : "○"}</span>
+                                  <span>{req.label}</span>
+                                </span>
+                              );
+                            })}
+                            {opcionalesCargados.slice(0, 2).map((opt) => (
+                              <span
+                                key={opt.id}
+                                title={`${opt.label} (${opt.nombre})`}
+                                style={{
+                                  fontSize: 9.5,
+                                  fontWeight: 800,
+                                  padding: "2px 6px",
+                                  borderRadius: 6,
+                                  background: `${opt.color}15`,
+                                  color: opt.color,
+                                  border: `1px solid ${opt.color}35`,
+                                }}
+                              >
+                                +{opt.label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 8, borderTop: "1px solid #f1f5f9", fontSize: 10.5, color: "#64748b", fontWeight: 700 }}>
+                          <span>{cargados}/{requeridos.length} obligatorios · {totalArchivos} arch.</span>
+                          <span style={{ color: "#1a73e8", fontWeight: 800 }}>Abrir →</span>
+                        </div>
                       </div>
                     </motion.div>
                   );
