@@ -1,6 +1,6 @@
 "use client";
 
-import { X, Download, CheckCircle, AlertCircle, XCircle } from "lucide-react";
+import { X, Download, CheckCircle, AlertCircle, XCircle, FileSpreadsheet } from "lucide-react";
 import type { ArchivoSubido, EstadoLote } from "@/types";
 import { colorEstado, labelEstado, obtenerUrlDescargaCloudinary } from "@/lib/utils";
 
@@ -57,6 +57,7 @@ interface VisorArchivoProps {
 export function VisorArchivo({ archivo, onClose }: VisorArchivoProps) {
   if (!archivo) return null;
   const esPDF = archivo.tipo === "application/pdf" || archivo.nombre?.toLowerCase().endsWith(".pdf") || Boolean(archivo.url?.toLowerCase().includes(".pdf"));
+  const esExcel = archivo.nombre?.toLowerCase().endsWith(".xlsx") || archivo.nombre?.toLowerCase().endsWith(".xls") || Boolean(archivo.tipo?.includes("spreadsheet") || archivo.tipo?.includes("excel"));
   const src = archivo.url;
 
   return (
@@ -136,6 +137,37 @@ export function VisorArchivo({ archivo, onClose }: VisorArchivoProps) {
               style={{ width: "75vw", height: "75vh", border: "none" }}
               title={archivo.nombre}
             />
+          ) : esExcel ? (
+            <div style={{ textAlign: "center", padding: "48px 32px" }}>
+              <div style={{ display: "inline-flex", padding: 18, background: "#ecfdf5", borderRadius: 24, color: "#10b981", marginBottom: 16 }}>
+                <FileSpreadsheet size={48} />
+              </div>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", margin: "0 0 6px 0" }}>{archivo.nombre}</h3>
+              <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 20px 0" }}>
+                Hoja de cálculo de Microsoft Excel lista para descargar y analizar.
+              </p>
+              <a
+                href={obtenerUrlDescargaCloudinary(src)}
+                download={archivo.nombre}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "#10b981",
+                  color: "#fff",
+                  borderRadius: 12,
+                  padding: "10px 22px",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  textDecoration: "none",
+                  boxShadow: "0 10px 25px rgba(16,185,129,0.3)"
+                }}
+              >
+                <Download size={16} /> Descargar archivo Excel
+              </a>
+            </div>
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
