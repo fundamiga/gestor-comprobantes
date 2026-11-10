@@ -56,7 +56,7 @@ interface VisorArchivoProps {
 
 export function VisorArchivo({ archivo, onClose }: VisorArchivoProps) {
   if (!archivo) return null;
-  const esPDF = archivo.tipo === "application/pdf";
+  const esPDF = archivo.tipo === "application/pdf" || archivo.nombre?.toLowerCase().endsWith(".pdf") || Boolean(archivo.url?.toLowerCase().includes(".pdf"));
   const src = archivo.url;
 
   return (
