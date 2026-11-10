@@ -108,7 +108,7 @@ export function TipoDocCard({
   const tiene = archivos.length > 0;
 
   // ── 1. AGRUPAR ARCHIVOS SI EL TIPO EXIGE GRUPOS (minArchivos >= 1) ────────────────
-  const esPorGrupos = typeof tipo.minArchivos === "number" && tipo.minArchivos >= 1;
+  const esPorGrupos = typeof tipo.minArchivos === "number" && tipo.minArchivos >= 2;
   const esPorParejas = esPorGrupos; // Alias para compatibilidad con el resto del código
 
   // Agrupar archivos reales
