@@ -55,6 +55,16 @@ export const TIPOS_DOCUMENTO: TipoDocumento[] = [
     categoria: "comprobantes",
   },
   {
+    id: "NC",
+    label: "NC (Nota Crédito)",
+    nombre: "Nota Crédito",
+    descripcion: "Documento contable o tributario que anula o disminuye facturas de venta.",
+    requerido: false,
+    color: "#e11d48",
+    minArchivos: 1,
+    categoria: "comprobantes",
+  },
+  {
     id: "BANC_CONCIL",
     label: "CONCILIACION",
     nombre: "Conciliación Bancaria",
